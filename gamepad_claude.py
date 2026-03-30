@@ -496,30 +496,6 @@ def on_button_down(button: int):
         type_string(prompt)
         return
 
-    # --- D-pad as buttons (when config says dpad_type == "button") ---
-    if loaded_config and loaded_config.get("dpad_type") == "button":
-        dpad = loaded_config.get("dpad", {})
-        if button == dpad.get("UP"):
-            if state.mode == Mode.PRESET_MENU:
-                state.preset_index = (state.preset_index - 1) % len(PRESET_PROMPTS)
-                show_preset_menu()
-            else:
-                press_key(Key.up)
-            return
-        elif button == dpad.get("DOWN"):
-            if state.mode == Mode.PRESET_MENU:
-                state.preset_index = (state.preset_index + 1) % len(PRESET_PROMPTS)
-                show_preset_menu()
-            else:
-                press_key(Key.down)
-            return
-        elif button == dpad.get("LEFT"):
-            press_key(Key.left)
-            return
-        elif button == dpad.get("RIGHT"):
-            press_key(Key.right)
-            return
-
     # --- Normal mode ---
     if button == Btn.A:
         osd("Enter")
@@ -770,6 +746,86 @@ def load_config():
         return None
 
 
+# ─── Map Mode ────────────────────────────────────────────────────
+
+def map_mode():
+    """Print current button mapping and exit."""
+    config = load_config()
+
+    print("\n  ╔═══════════════════════════════════════════════════════════════╗")
+    print("  ║  🎮 当前键位映射                                             ║")
+    print("  ╚═══════════════════════════════════════════════════════════════╝")
+
+    if config:
+        print(f"\n  📂 来源: {CONFIG_FILE}\n")
+    else:
+        print(f"\n  📂 来源: 默认配置 (未找到 controller_config.json，可用 make init 初始化)\n")
+
+    # --- Basic buttons ---
+    print("  ── 基础按键 ──\n")
+    btn_actions = [
+        ("A", "A / ✕",  "Enter (确认)"),
+        ("B", "B / ○",  "Ctrl+C (中断)"),
+        ("X", "X / □",  "输入 'y' + Enter (接受)"),
+        ("Y", "Y / △",  "输入 'n' + Enter (拒绝)"),
+        ("LB", "LB / L1", "Tab (补全)"),
+        ("RB", "RB / R1", "Escape"),
+        ("SELECT", "Select / Create", "/clear + Enter"),
+        ("START", "Start / Options", "预设菜单"),
+        ("L_STICK", "左摇杆按下", "🎤 语音输入"),
+        ("R_STICK", "右摇杆按下", "🎤 语音输入"),
+    ]
+    for attr, label, action in btn_actions:
+        idx = getattr(Btn, attr, "?")
+        print(f"    Button {idx:<3}  {label:<20} → {action}")
+
+    # --- D-pad ---
+    print("\n  ── 十字键 ──\n")
+    if config and config.get("dpad_type") == "button":
+        dpad = config.get("dpad", {})
+        print(f"    类型: 按钮模式")
+        print(f"    Button {dpad.get('UP', '?'):<3}  D-pad ↑              → 上 / 菜单上翻")
+        print(f"    Button {dpad.get('DOWN', '?'):<3}  D-pad ↓              → 下 / 菜单下翻")
+        print(f"    Button {dpad.get('LEFT', '?'):<3}  D-pad ←              → 左")
+        print(f"    Button {dpad.get('RIGHT', '?'):<3}  D-pad →              → 右")
+    else:
+        hat_idx = 0
+        if config and config.get("dpad_type") == "hat":
+            hat_idx = config.get("dpad", {}).get("hat_index", 0)
+        print(f"    类型: Hat Switch (Hat {hat_idx})")
+        print(f"    Hat {hat_idx} (0,1)   D-pad ↑              → 上 / 菜单上翻")
+        print(f"    Hat {hat_idx} (0,-1)  D-pad ↓              → 下 / 菜单下翻")
+        print(f"    Hat {hat_idx} (-1,0)  D-pad ←              → 左")
+        print(f"    Hat {hat_idx} (1,0)   D-pad →              → 右")
+
+    # --- Axes ---
+    print("\n  ── 摇杆 & 扳机 ──\n")
+    axis_info = [
+        ("LX", "左摇杆 X"),
+        ("LY", "左摇杆 Y (滚动)"),
+        ("RX", "右摇杆 X"),
+        ("RY", "右摇杆 Y"),
+        ("LT", "LT / L2 (修饰键)"),
+        ("RT", "RT / R2 (修饰键)"),
+    ]
+    for attr, label in axis_info:
+        idx = getattr(Axis, attr, "?")
+        print(f"    Axis {idx:<3}  {label}")
+
+    # --- Combos ---
+    print("\n  ── 组合键 ──\n")
+    print("    LT + A   → \"fix the failing tests\"")
+    print("    LT + B   → \"explain this error\"")
+    print("    LT + X   → \"continue\"")
+    print("    LT + Y   → \"undo the last change\"")
+    print("    RT + A   → \"run the tests\"")
+    print("    RT + B   → \"show me the diff\"")
+    print("    RT + X   → \"looks good, commit this\"")
+    print("    RT + Y   → \"refactor this to be cleaner\"")
+    print("    LT+RT+Select → 退出控制器")
+    print()
+
+
 # ─── Identify Mode ────────────────────────────────────────────────
 
 def identify_mode(joystick):
@@ -804,6 +860,7 @@ def main():
 
     identify = "--identify" in sys.argv
     do_init = "--init" in sys.argv
+    do_map = "--map" in sys.argv
     force_profile = None
     if "--ps5" in sys.argv:
         force_profile = "ps5"
@@ -820,11 +877,17 @@ def main():
   ║  LT/RT + Face=Quick Prompts                   ║
   ║                                               ║
   ║  --init      Interactive button calibration   ║
+  ║  --map       Show current button mapping      ║
   ║  --identify  Check button mapping             ║
   ║  --ps5       Force PS5 DualSense profile      ║
   ║  --xbox      Force Xbox profile (default)     ║
   ╚═══════════════════════════════════════════════╝
     """)
+
+    # --map: show mapping and exit (no controller needed)
+    if do_map:
+        map_mode()
+        return
 
     # Wait for controller
     print("  Waiting for controller...", end="", flush=True)

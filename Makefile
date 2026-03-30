@@ -1,10 +1,13 @@
-.PHONY: run setup identify init
+.PHONY: run setup identify init map
 
 run:
 	.venv/bin/python3 gamepad_claude.py
 
 init:
 	.venv/bin/python3 gamepad_claude.py --init
+
+map:
+	.venv/bin/python3 gamepad_claude.py --map
 
 identify:
 	.venv/bin/python3 gamepad_claude.py --identify
