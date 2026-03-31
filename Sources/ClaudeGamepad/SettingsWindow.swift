@@ -54,7 +54,7 @@ final class SettingsWindow: NSWindowController, NSTextViewDelegate {
     private let promptSlots: [PromptSlotDescriptor] = [
         PromptSlotDescriptor(
             id: "lt.a",
-            title: "LT + A / Cross",
+            title: "LT + A / L2 + ×",
             subtitle: "Left trigger quick action",
             promptKey: "a",
             color: NSColor(red: 0.30, green: 0.78, blue: 0.35, alpha: 1),
@@ -62,7 +62,7 @@ final class SettingsWindow: NSWindowController, NSTextViewDelegate {
         ),
         PromptSlotDescriptor(
             id: "lt.b",
-            title: "LT + B / Circle",
+            title: "LT + B / L2 + ○",
             subtitle: "Left trigger quick action",
             promptKey: "b",
             color: NSColor(red: 0.90, green: 0.28, blue: 0.28, alpha: 1),
@@ -70,7 +70,7 @@ final class SettingsWindow: NSWindowController, NSTextViewDelegate {
         ),
         PromptSlotDescriptor(
             id: "lt.x",
-            title: "LT + X / Square",
+            title: "LT + X / L2 + □",
             subtitle: "Left trigger quick action",
             promptKey: "x",
             color: NSColor(red: 0.30, green: 0.52, blue: 0.95, alpha: 1),
@@ -78,7 +78,7 @@ final class SettingsWindow: NSWindowController, NSTextViewDelegate {
         ),
         PromptSlotDescriptor(
             id: "lt.y",
-            title: "LT + Y / Triangle",
+            title: "LT + Y / L2 + △",
             subtitle: "Left trigger quick action",
             promptKey: "y",
             color: NSColor(red: 0.95, green: 0.78, blue: 0.20, alpha: 1),
@@ -86,7 +86,7 @@ final class SettingsWindow: NSWindowController, NSTextViewDelegate {
         ),
         PromptSlotDescriptor(
             id: "rt.a",
-            title: "RT + A / Cross",
+            title: "RT + A / R2 + ×",
             subtitle: "Right trigger quick action",
             promptKey: "a",
             color: NSColor(red: 0.30, green: 0.78, blue: 0.35, alpha: 1),
@@ -94,7 +94,7 @@ final class SettingsWindow: NSWindowController, NSTextViewDelegate {
         ),
         PromptSlotDescriptor(
             id: "rt.b",
-            title: "RT + B / Circle",
+            title: "RT + B / R2 + ○",
             subtitle: "Right trigger quick action",
             promptKey: "b",
             color: NSColor(red: 0.90, green: 0.28, blue: 0.28, alpha: 1),
@@ -102,7 +102,7 @@ final class SettingsWindow: NSWindowController, NSTextViewDelegate {
         ),
         PromptSlotDescriptor(
             id: "rt.x",
-            title: "RT + X / Square",
+            title: "RT + X / R2 + □",
             subtitle: "Right trigger quick action",
             promptKey: "x",
             color: NSColor(red: 0.30, green: 0.52, blue: 0.95, alpha: 1),
@@ -110,7 +110,7 @@ final class SettingsWindow: NSWindowController, NSTextViewDelegate {
         ),
         PromptSlotDescriptor(
             id: "rt.y",
-            title: "RT + Y / Triangle",
+            title: "RT + Y / R2 + △",
             subtitle: "Right trigger quick action",
             promptKey: "y",
             color: NSColor(red: 0.95, green: 0.78, blue: 0.20, alpha: 1),
@@ -364,7 +364,7 @@ final class SettingsWindow: NSWindowController, NSTextViewDelegate {
         listTitle.frame = NSRect(x: cardInset, y: 18, width: 140, height: 18)
         splitCard.addSubview(listTitle)
 
-        let listSubtitle = NSTextField(labelWithString: "LT and RT modifier combinations")
+        let listSubtitle = NSTextField(labelWithString: "LT / RT and L2 / R2 modifier combinations")
         listSubtitle.font = NSFont.systemFont(ofSize: 11)
         listSubtitle.textColor = NSColor.white.withAlphaComponent(0.58)
         listSubtitle.frame = NSRect(x: cardInset, y: 38, width: 180, height: 14)

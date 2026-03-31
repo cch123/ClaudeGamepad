@@ -25,10 +25,10 @@ final class GamepadConfigView: NSView {
         ButtonSlot(key: "rt", actionKey: nil, title: "RT / R2", group: "shoulders", trailingText: "Preset Prompts"),
         ButtonSlot(key: "lb", actionKey: "lb", title: "LB / L1", group: "shoulders", trailingText: nil),
         ButtonSlot(key: "rb", actionKey: "rb", title: "RB / R1", group: "shoulders", trailingText: nil),
-        ButtonSlot(key: "a", actionKey: "a", title: "A / Cross", group: "face", trailingText: nil),
-        ButtonSlot(key: "b", actionKey: "b", title: "B / Circle", group: "face", trailingText: nil),
-        ButtonSlot(key: "x", actionKey: "x", title: "X / Square", group: "face", trailingText: nil),
-        ButtonSlot(key: "y", actionKey: "y", title: "Y / Triangle", group: "face", trailingText: nil),
+        ButtonSlot(key: "a", actionKey: "a", title: "A / ×", group: "face", trailingText: nil),
+        ButtonSlot(key: "b", actionKey: "b", title: "B / ○", group: "face", trailingText: nil),
+        ButtonSlot(key: "x", actionKey: "x", title: "X / □", group: "face", trailingText: nil),
+        ButtonSlot(key: "y", actionKey: "y", title: "Y / △", group: "face", trailingText: nil),
         ButtonSlot(key: "dpadUp", actionKey: "dpadUp", title: "D-pad Up", group: "nav", trailingText: nil),
         ButtonSlot(key: "dpadDown", actionKey: "dpadDown", title: "D-pad Down", group: "nav", trailingText: nil),
         ButtonSlot(key: "dpadLeft", actionKey: "dpadLeft", title: "D-pad Left", group: "nav", trailingText: nil),
@@ -42,9 +42,9 @@ final class GamepadConfigView: NSView {
     private let groups: [GroupDescriptor] = [
         GroupDescriptor(
             title: "Shoulders",
-            subtitle: "Trigger modifiers and bumper actions",
+            subtitle: "LT / L2 and RT / R2 modifiers, plus LB / L1 and RB / R1 actions",
             slotKeys: ["lt", "rt", "lb", "rb"],
-            footer: "LT and RT stay managed in Preset Prompts."
+            footer: "LT / L2 and RT / R2 stay managed in Preset Prompts."
         ),
         GroupDescriptor(
             title: "Face Buttons",
