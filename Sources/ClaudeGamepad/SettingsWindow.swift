@@ -6,9 +6,7 @@ final class SettingsWindow: NSWindowController {
     private var speechSettings = SpeechSettings.load()
 
     private var gamepadView: GamepadConfigView!
-    private var presetFields: [NSTextField] = []
-    private var ltFields: [String: NSTextField] = [:]
-    private var rtFields: [String: NSTextField] = [:]
+    // (preset/quick prompt fields are in ltPopups/rtPopups)
 
     private var enginePopup: NSPopUpButton!
     private var whisperModelPopup: NSPopUpButton!
@@ -102,8 +100,151 @@ final class SettingsWindow: NSWindowController {
     }
 
     // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    // MARK: - Tab 2: Preset Prompts
+    // MARK: - Tab 2: Quick Prompts
     // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+    private var ltPopups: [String: NSPopUpButton] = [:]
+    private var rtPopups: [String: NSPopUpButton] = [:]
+    private var ltCustomFields: [String: NSTextField] = [:]
+    private var rtCustomFields: [String: NSTextField] = [:]
+
+    /// Build a categorized NSPopUpButton from preset categories.
+    private func buildPresetPopup(currentValue: String) -> NSPopUpButton {
+        let popup = NSPopUpButton(frame: .zero, pullsDown: false)
+        popup.font = NSFont.systemFont(ofSize: 12)
+        popup.target = self
+        popup.action = #selector(presetPopupChanged(_:))
+
+        // Custom value display (hidden, selected when user enters custom text)
+        let customValueItem = NSMenuItem(title: "", action: nil, keyEquivalent: "")
+        customValueItem.tag = 998
+        customValueItem.isHidden = true
+        popup.menu?.addItem(customValueItem)
+
+        // "Custom..." trigger
+        let customItem = NSMenuItem(title: "Custom...", action: nil, keyEquivalent: "")
+        customItem.tag = 999
+        popup.menu?.addItem(customItem)
+        popup.menu?.addItem(.separator())
+
+        for cat in mapping.categories {
+            let header = NSMenuItem(title: cat.name, action: nil, keyEquivalent: "")
+            header.isEnabled = false
+            header.attributedTitle = NSAttributedString(
+                string: "  \(cat.name)",
+                attributes: [
+                    .font: NSFont.systemFont(ofSize: 10, weight: .bold),
+                    .foregroundColor: NSColor.secondaryLabelColor,
+                ]
+            )
+            popup.menu?.addItem(header)
+
+            for prompt in cat.prompts {
+                let item = NSMenuItem(title: prompt, action: nil, keyEquivalent: "")
+                item.indentationLevel = 1
+                popup.menu?.addItem(item)
+            }
+            popup.menu?.addItem(.separator())
+        }
+
+        // Check if currentValue is a preset or custom
+        let isPreset = mapping.categories.flatMap({ $0.prompts }).contains(currentValue)
+        if isPreset {
+            if let item = popup.menu?.items.first(where: { $0.title == currentValue }) {
+                popup.select(item)
+            }
+        } else if !currentValue.isEmpty {
+            // Custom value — show in the hidden item
+            customValueItem.title = currentValue
+            customValueItem.isHidden = false
+            popup.select(customValueItem)
+        }
+
+        return popup
+    }
+
+    /// Get the effective prompt value from a popup + its paired custom field.
+    private func promptValue(popup: NSPopUpButton, customField: NSTextField?) -> String {
+        let tag = popup.selectedItem?.tag ?? 0
+        if tag == 998 || tag == 999 {
+            return customField?.stringValue ?? popup.titleOfSelectedItem ?? ""
+        }
+        return popup.titleOfSelectedItem ?? ""
+    }
+
+    /// Build one combo row: color dot + label + popup.
+    /// If value is custom (not a preset), show it directly in the popup title.
+    private func buildComboRow(card: NSView, y: inout CGFloat, label: String, key: String,
+                               value: String, color: NSColor, isPreset: Bool,
+                               popups: inout [String: NSPopUpButton],
+                               customFields: inout [String: NSTextField]) {
+        let dot = ColorDotView2(color: color, frame: NSRect(x: 16, y: y + 8, width: 8, height: 8))
+        card.addSubview(dot)
+
+        let lbl = makeLabel(label)
+        lbl.font = NSFont.systemFont(ofSize: 12, weight: .semibold)
+        lbl.frame = NSRect(x: 30, y: y + 3, width: 55, height: 18)
+        card.addSubview(lbl)
+
+        let popup = buildPresetPopup(currentValue: value)
+        popup.frame = NSRect(x: 95, y: y, width: cardWidth - 112, height: 24)
+        card.addSubview(popup)
+        popups[key] = popup
+
+        // Hidden text field that stores custom value (not displayed inline)
+        let customField = NSTextField(string: isPreset ? "" : value)
+        customField.isHidden = true
+        customField.frame = .zero
+        card.addSubview(customField)
+        customFields[key] = customField
+
+        y += 34
+    }
+
+    @objc private func presetPopupChanged(_ sender: NSPopUpButton) {
+        guard sender.selectedItem?.tag == 999 else { return }
+
+        // Find the matching custom field
+        let allMaps: [(String, [String: NSPopUpButton], [String: NSTextField])] = [
+            ("lt", ltPopups, ltCustomFields),
+            ("rt", rtPopups, rtCustomFields),
+        ]
+        for (_, popups, fields) in allMaps {
+            for (key, p) in popups where p === sender {
+                // Show input dialog
+                let alert = NSAlert()
+                alert.messageText = "Custom Prompt"
+                alert.informativeText = "Enter your custom prompt:"
+                alert.addButton(withTitle: "OK")
+                alert.addButton(withTitle: "Cancel")
+
+                let input = NSTextField(frame: NSRect(x: 0, y: 0, width: 400, height: 24))
+                input.font = NSFont.systemFont(ofSize: 13)
+                input.stringValue = fields[key]?.stringValue ?? ""
+                input.placeholderString = "e.g. fix the type errors"
+                alert.accessoryView = input
+                alert.window.initialFirstResponder = input
+
+                let response = alert.runModal()
+                if response == .alertFirstButtonReturn, !input.stringValue.isEmpty {
+                    let custom = input.stringValue
+                    fields[key]?.stringValue = custom
+                    // Show custom value in the hidden display item (tag 998)
+                    if let valueItem = sender.menu?.items.first(where: { $0.tag == 998 }) {
+                        valueItem.title = custom
+                        valueItem.isHidden = false
+                        sender.select(valueItem)
+                    }
+                } else {
+                    // Cancelled — revert to first preset
+                    if let firstPreset = sender.menu?.items.first(where: { $0.isEnabled && $0.tag != 999 && $0.tag != 998 && !$0.isSeparatorItem && $0.title != "" }) {
+                        sender.select(firstPreset)
+                    }
+                }
+                return
+            }
+        }
+    }
 
     private func buildPromptsTab() -> NSView {
         let scroll = NSScrollView(frame: NSRect(x: 0, y: 0, width: 860, height: 560))
@@ -111,60 +252,38 @@ final class SettingsWindow: NSWindowController {
         scroll.drawsBackground = false
         scroll.autoresizingMask = [.width, .height]
 
-        let doc = FlippedView(frame: NSRect(x: 0, y: 0, width: 840, height: 900))
+        let doc = FlippedView(frame: NSRect(x: 0, y: 0, width: 840, height: 700))
         scroll.documentView = doc
 
         var y: CGFloat = cardInset
-        presetFields = []
-        ltFields = [:]
-        rtFields = [:]
-
-        // ── Header ──
-        y = addSectionHeader(to: doc, y: y,
-                             icon: "text.bubble.fill",
-                             title: "Preset Prompts",
-                             subtitle: "Press Start to open menu, D-pad to cycle, A to send")
-
-        // ── Preset list card ──
-        let presetCardH = CGFloat(mapping.presetPrompts.count) * rowH + 20
-        let presetCard = addCard(to: doc, y: y, height: presetCardH)
-        var ry: CGFloat = 10
-        for (i, prompt) in mapping.presetPrompts.enumerated() {
-            let num = makeLabel("\(i + 1)")
-            num.font = NSFont.monospacedDigitSystemFont(ofSize: 12, weight: .medium)
-            num.textColor = .tertiaryLabelColor
-            num.alignment = .right
-            num.frame = NSRect(x: 12, y: ry + 5, width: 24, height: 18)
-            presetCard.addSubview(num)
-
-            let field = NSTextField(string: prompt)
-            field.frame = NSRect(x: 44, y: ry + 3, width: cardWidth - 60, height: 24)
-            field.font = NSFont.systemFont(ofSize: 13)
-            field.bezelStyle = .roundedBezel
-            presetCard.addSubview(field)
-            presetFields.append(field)
-            ry += rowH
-        }
-        y += presetCardH + sectionGap
+        ltPopups = [:]
+        rtPopups = [:]
 
         // ── LT Quick Prompts ──
         y = addSectionHeader(to: doc, y: y,
                              icon: "l2.button.roundedtop.horizontal.fill",
                              title: "LT / L2 + Button",
-                             subtitle: "Hold left trigger + face button for quick prompts")
+                             subtitle: "Hold left trigger + face button to send prompt")
 
-        let ltItems: [(String, String, String)] = [
-            ("A / ✕", "a", mapping.ltPrompts.a),
-            ("B / ○", "b", mapping.ltPrompts.b),
-            ("X / □", "x", mapping.ltPrompts.x),
-            ("Y / △", "y", mapping.ltPrompts.y),
+        let comboRowH: CGFloat = 34  // compact row; custom field overlaps into gap
+        let btnColors: [NSColor] = [
+            NSColor(red: 0.3, green: 0.78, blue: 0.35, alpha: 1),  // A
+            NSColor(red: 0.9, green: 0.28, blue: 0.28, alpha: 1),  // B
+            NSColor(red: 0.3, green: 0.52, blue: 0.95, alpha: 1),  // X
+            NSColor(red: 0.95, green: 0.78, blue: 0.2, alpha: 1),  // Y
         ]
-        let ltCardH = CGFloat(ltItems.count) * rowH + 20
+        let btnLabels = ["A / ✕", "B / ○", "X / □", "Y / △"]
+        let btnKeys = ["a", "b", "x", "y"]
+
+        let ltValues = [mapping.ltPrompts.a, mapping.ltPrompts.b, mapping.ltPrompts.x, mapping.ltPrompts.y]
+        let ltCardH = CGFloat(btnKeys.count) * comboRowH + 16
         let ltCard = addCard(to: doc, y: y, height: ltCardH)
-        ry = 10
-        for (label, key, value) in ltItems {
-            addFormRow(to: ltCard, y: ry, label: label, value: value, fieldWidth: cardWidth - labelWidth - 32, storeIn: &ltFields, key: key)
-            ry += rowH
+        var ry: CGFloat = 8
+        for i in 0..<btnKeys.count {
+            let isPreset = mapping.categories.flatMap({ $0.prompts }).contains(ltValues[i])
+            buildComboRow(card: ltCard, y: &ry, label: btnLabels[i], key: btnKeys[i],
+                          value: ltValues[i], color: btnColors[i], isPreset: isPreset,
+                          popups: &ltPopups, customFields: &ltCustomFields)
         }
         y += ltCardH + sectionGap
 
@@ -172,20 +291,17 @@ final class SettingsWindow: NSWindowController {
         y = addSectionHeader(to: doc, y: y,
                              icon: "r2.button.roundedtop.horizontal.fill",
                              title: "RT / R2 + Button",
-                             subtitle: "Hold right trigger + face button for quick prompts")
+                             subtitle: "Hold right trigger + face button to send prompt")
 
-        let rtItems: [(String, String, String)] = [
-            ("A / ✕", "a", mapping.rtPrompts.a),
-            ("B / ○", "b", mapping.rtPrompts.b),
-            ("X / □", "x", mapping.rtPrompts.x),
-            ("Y / △", "y", mapping.rtPrompts.y),
-        ]
-        let rtCardH = CGFloat(rtItems.count) * rowH + 20
+        let rtValues = [mapping.rtPrompts.a, mapping.rtPrompts.b, mapping.rtPrompts.x, mapping.rtPrompts.y]
+        let rtCardH = CGFloat(btnKeys.count) * comboRowH + 16
         let rtCard = addCard(to: doc, y: y, height: rtCardH)
-        ry = 10
-        for (label, key, value) in rtItems {
-            addFormRow(to: rtCard, y: ry, label: label, value: value, fieldWidth: cardWidth - labelWidth - 32, storeIn: &rtFields, key: key)
-            ry += rowH
+        ry = 8
+        for i in 0..<btnKeys.count {
+            let isPreset = mapping.categories.flatMap({ $0.prompts }).contains(rtValues[i])
+            buildComboRow(card: rtCard, y: &ry, label: btnLabels[i], key: btnKeys[i],
+                          value: rtValues[i], color: btnColors[i], isPreset: isPreset,
+                          popups: &rtPopups, customFields: &rtCustomFields)
         }
         y += rtCardH + sectionGap + 16
 
@@ -512,14 +628,18 @@ final class SettingsWindow: NSWindowController {
             dpadLeft: gamepadView.actionForSlot("dpadLeft"),
             dpadRight: gamepadView.actionForSlot("dpadRight")
         )
-        mapping.presetPrompts = presetFields.map { $0.stringValue }
+        mapping.presetPrompts = mapping.allPrompts
         mapping.ltPrompts = ButtonMapping.QuickPrompts(
-            a: ltFields["a"]!.stringValue, b: ltFields["b"]!.stringValue,
-            x: ltFields["x"]!.stringValue, y: ltFields["y"]!.stringValue
+            a: promptValue(popup: ltPopups["a"]!, customField: ltCustomFields["a"]),
+            b: promptValue(popup: ltPopups["b"]!, customField: ltCustomFields["b"]),
+            x: promptValue(popup: ltPopups["x"]!, customField: ltCustomFields["x"]),
+            y: promptValue(popup: ltPopups["y"]!, customField: ltCustomFields["y"])
         )
         mapping.rtPrompts = ButtonMapping.QuickPrompts(
-            a: rtFields["a"]!.stringValue, b: rtFields["b"]!.stringValue,
-            x: rtFields["x"]!.stringValue, y: rtFields["y"]!.stringValue
+            a: promptValue(popup: rtPopups["a"]!, customField: rtCustomFields["a"]),
+            b: promptValue(popup: rtPopups["b"]!, customField: rtCustomFields["b"]),
+            x: promptValue(popup: rtPopups["x"]!, customField: rtCustomFields["x"]),
+            y: promptValue(popup: rtPopups["y"]!, customField: rtCustomFields["y"])
         )
         mapping.save()
 
@@ -544,9 +664,10 @@ final class SettingsWindow: NSWindowController {
         speechSettings = .default
         guard let contentView = window?.contentView else { return }
         contentView.subviews.forEach { $0.removeFromSuperview() }
-        presetFields.removeAll()
-        ltFields.removeAll()
-        rtFields.removeAll()
+        ltPopups.removeAll()
+        rtPopups.removeAll()
+        ltCustomFields.removeAll()
+        rtCustomFields.removeAll()
         setupUI()
     }
 
@@ -561,4 +682,18 @@ final class SettingsWindow: NSWindowController {
 
 class FlippedView: NSView {
     override var isFlipped: Bool { true }
+}
+
+private class ColorDotView2: NSView {
+    let color: NSColor
+    override var isFlipped: Bool { true }
+    init(color: NSColor, frame: NSRect) {
+        self.color = color
+        super.init(frame: frame)
+    }
+    required init?(coder: NSCoder) { fatalError() }
+    override func draw(_ dirtyRect: NSRect) {
+        color.withAlphaComponent(0.85).setFill()
+        NSBezierPath(ovalIn: bounds).fill()
+    }
 }

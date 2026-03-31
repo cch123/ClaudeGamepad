@@ -19,9 +19,16 @@ enum ButtonAction: String, Codable, CaseIterable {
     case none = "None (无)"
 }
 
+/// A category of preset prompts.
+struct PresetCategory: Codable {
+    var name: String
+    var prompts: [String]
+}
+
 /// Preset prompt configuration and quick prompt mappings.
 struct ButtonMapping: Codable {
-    var presetPrompts: [String]
+    var categories: [PresetCategory]
+    var presetPrompts: [String]  // flat list for Start menu cycling (derived from categories)
     var ltPrompts: QuickPrompts
     var rtPrompts: QuickPrompts
     var buttonActions: ButtonActions
@@ -31,6 +38,11 @@ struct ButtonMapping: Codable {
         var b: String
         var x: String
         var y: String
+    }
+
+    /// All prompts flattened from categories.
+    var allPrompts: [String] {
+        categories.flatMap { $0.prompts }
     }
 
     struct ButtonActions: Codable {
@@ -65,17 +77,33 @@ struct ButtonMapping: Codable {
         )
     }
 
-    static let `default` = ButtonMapping(
-        presetPrompts: [
+    static let defaultCategories: [PresetCategory] = [
+        PresetCategory(name: "Debug", prompts: [
             "fix the failing tests",
-            "explain what this code does",
-            "add error handling",
-            "write tests for this",
-            "refactor this to be cleaner",
             "find and fix the bug",
+            "explain this error",
+        ]),
+        PresetCategory(name: "Code", prompts: [
+            "explain what this code does",
+            "refactor this to be cleaner",
             "optimize this for performance",
             "add types and documentation",
-        ],
+        ]),
+        PresetCategory(name: "Edit", prompts: [
+            "add error handling",
+            "write tests for this",
+            "continue",
+            "undo the last change",
+        ]),
+        PresetCategory(name: "Git", prompts: [
+            "show me the diff",
+            "looks good, commit this",
+        ]),
+    ]
+
+    static let `default` = ButtonMapping(
+        categories: defaultCategories,
+        presetPrompts: defaultCategories.flatMap { $0.prompts },
         ltPrompts: QuickPrompts(
             a: "fix the failing tests",
             b: "explain this error",

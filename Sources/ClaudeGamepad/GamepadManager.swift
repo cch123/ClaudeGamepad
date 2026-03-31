@@ -196,7 +196,7 @@ final class GamepadManager {
         // Preset menu mode
         if isInPresetMenu {
             if action == mapping.buttonActions.a || action == .enter {
-                let prompt = mapping.presetPrompts[presetIndex]
+                let prompt = mapping.allPrompts[presetIndex]
                 isInPresetMenu = false
                 overlay.showMessage("📤 \(prompt)")
                 keys.typeString(prompt)
@@ -286,10 +286,10 @@ final class GamepadManager {
     private func onDpad(x: Float, y: Float) {
         if isInPresetMenu {
             if y > 0.5 {
-                presetIndex = (presetIndex - 1 + mapping.presetPrompts.count) % mapping.presetPrompts.count
+                presetIndex = (presetIndex - 1 + mapping.allPrompts.count) % mapping.allPrompts.count
                 showPresetOverlay()
             } else if y < -0.5 {
-                presetIndex = (presetIndex + 1) % mapping.presetPrompts.count
+                presetIndex = (presetIndex + 1) % mapping.allPrompts.count
                 showPresetOverlay()
             }
             return
@@ -320,8 +320,8 @@ final class GamepadManager {
     // MARK: - Preset Menu
 
     private func showPresetOverlay() {
-        let prompt = mapping.presetPrompts[presetIndex]
-        let total = mapping.presetPrompts.count
+        let prompt = mapping.allPrompts[presetIndex]
+        let total = mapping.allPrompts.count
         overlay.showMessage("📋 [\(presetIndex + 1)/\(total)] \(prompt)", duration: 10)
     }
 
