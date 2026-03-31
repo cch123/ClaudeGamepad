@@ -323,7 +323,7 @@ final class SettingsWindow: NSWindowController, NSTextViewDelegate {
             subtitle: SettingsSection.buttons.subtitle
         )
 
-        let viewHeight = page.bounds.height - bodyY - pageInset
+        let viewHeight = page.bounds.height - bodyY - 16
         gamepadView = GamepadConfigView(
             frame: NSRect(x: pageInset, y: bodyY, width: page.bounds.width - 2 * pageInset, height: viewHeight),
             mapping: mapping
@@ -349,7 +349,7 @@ final class SettingsWindow: NSWindowController, NSTextViewDelegate {
         )
 
         let listWidth: CGFloat = 282
-        let splitHeight = page.bounds.height - bodyY - pageInset
+        let splitHeight = page.bounds.height - bodyY - 12
         let splitCard = SurfaceCardView(frame: NSRect(x: pageInset, y: bodyY, width: page.bounds.width - 2 * pageInset, height: splitHeight))
         splitCard.autoresizingMask = [.width, .height]
         page.addSubview(splitCard)
@@ -636,7 +636,7 @@ final class SettingsWindow: NSWindowController, NSTextViewDelegate {
 
         let fullWidth = page.bounds.width - 2 * pageInset
 
-        let summaryCard = SurfaceCardView(frame: NSRect(x: pageInset, y: bodyY, width: fullWidth, height: 90))
+        let summaryCard = SurfaceCardView(frame: NSRect(x: pageInset, y: bodyY, width: fullWidth, height: 112))
         summaryCard.autoresizingMask = [.width]
         page.addSubview(summaryCard)
 
@@ -648,7 +648,7 @@ final class SettingsWindow: NSWindowController, NSTextViewDelegate {
         let summarySubtitle = NSTextField(labelWithString: "Current runtime status")
         summarySubtitle.font = NSFont.systemFont(ofSize: 11)
         summarySubtitle.textColor = .secondaryLabelColor
-        summarySubtitle.frame = NSRect(x: cardInset, y: 32, width: 160, height: 14)
+        summarySubtitle.frame = NSRect(x: cardInset, y: 36, width: 160, height: 14)
         summaryCard.addSubview(summarySubtitle)
 
         let metricTitles = [
@@ -663,13 +663,13 @@ final class SettingsWindow: NSWindowController, NSTextViewDelegate {
             let caption = NSTextField(labelWithString: metric.1)
             caption.font = NSFont.systemFont(ofSize: 11, weight: .medium)
             caption.textColor = .secondaryLabelColor
-            caption.frame = NSRect(x: x, y: 48, width: metricWidth - 12, height: 14)
+            caption.frame = NSRect(x: x, y: 62, width: metricWidth - 12, height: 14)
             caption.autoresizingMask = [.maxXMargin]
             summaryCard.addSubview(caption)
 
             let valueLabel = NSTextField(labelWithString: "")
             valueLabel.font = NSFont.systemFont(ofSize: 15, weight: .semibold)
-            valueLabel.frame = NSRect(x: x, y: 64, width: metricWidth - 12, height: 20)
+            valueLabel.frame = NSRect(x: x, y: 80, width: metricWidth - 12, height: 20)
             valueLabel.autoresizingMask = [.maxXMargin]
             summaryCard.addSubview(valueLabel)
             speechSummaryLabels[metric.0] = valueLabel
@@ -700,7 +700,7 @@ final class SettingsWindow: NSWindowController, NSTextViewDelegate {
         let lowerY = engineCard.frame.maxY + 14
         let lowerGap: CGFloat = 14
         let columnWidth = (fullWidth - lowerGap) / 2
-        let lowerHeight = max(226, page.bounds.height - lowerY - pageInset)
+        let lowerHeight = max(238, page.bounds.height - lowerY - pageInset)
         whisperCard = SurfaceCardView(frame: NSRect(x: pageInset, y: lowerY, width: columnWidth, height: lowerHeight))
         whisperCard.autoresizingMask = [.width, .height]
         page.addSubview(whisperCard)
@@ -813,15 +813,17 @@ final class SettingsWindow: NSWindowController, NSTextViewDelegate {
 
         addFormLabel("Model", y: llmY, card: llmCard)
         llmModelField = NSTextField(string: speechSettings.llmModel)
-        llmModelField.frame = NSRect(x: labelWidth + cardInset, y: llmY, width: 160, height: 26)
+        let llmFieldWidth = llmCard.bounds.width - labelWidth - 2 * cardInset
+        llmModelField.frame = NSRect(x: labelWidth + cardInset, y: llmY, width: min(200, llmFieldWidth), height: 26)
         llmModelField.placeholderString = "qwen2.5:7b"
+        llmModelField.autoresizingMask = [.maxXMargin]
         llmCard.addSubview(llmModelField)
         llmManagedControls.append(llmModelField)
 
-        let llmHint = NSTextField(labelWithString: "Works with Ollama, LM Studio, or any OpenAI-compatible endpoint.")
+        let llmHint = NSTextField(wrappingLabelWithString: "Works with Ollama, LM Studio, or any OpenAI-compatible endpoint.")
         llmHint.font = NSFont.systemFont(ofSize: 11)
         llmHint.textColor = .secondaryLabelColor
-        llmHint.frame = NSRect(x: labelWidth + cardInset + 172, y: llmY + 4, width: llmCard.bounds.width - labelWidth - 2 * cardInset - 172, height: 30)
+        llmHint.frame = NSRect(x: labelWidth + cardInset, y: llmY + 30, width: llmFieldWidth, height: 28)
         llmHint.autoresizingMask = [.width]
         llmCard.addSubview(llmHint)
 

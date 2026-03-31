@@ -123,7 +123,7 @@ final class GamepadConfigView: NSView {
     private func layoutCards() {
         guard groupCards.count == 4 else { return }
 
-        let gap: CGFloat = 18
+        let gap: CGFloat = 12
         let columnWidth = (bounds.width - gap) / 2
         let rowHeightTop = max(groupCards[0].preferredHeight, groupCards[1].preferredHeight)
         let rowHeightBottom = max(groupCards[2].preferredHeight, groupCards[3].preferredHeight)
@@ -185,8 +185,8 @@ private final class MappingGroupCardView: NSView {
 
     init(title: String, subtitle: String, footer: String?, rows: [MappingActionRowView]) {
         self.rows = rows
-        let footerHeight: CGFloat = footer == nil ? 0 : 24
-        self.preferredHeight = 64 + CGFloat(rows.count) * 38 + CGFloat(max(rows.count - 1, 0)) * 8 + footerHeight + 18
+        let footerHeight: CGFloat = footer == nil ? 12 : 26
+        self.preferredHeight = 50 + CGFloat(rows.count) * 32 + CGFloat(max(rows.count - 1, 0)) * 6 + footerHeight
         super.init(frame: .zero)
 
         wantsLayer = true
@@ -218,17 +218,17 @@ private final class MappingGroupCardView: NSView {
     override func layout() {
         super.layout()
 
-        titleLabel.frame = NSRect(x: 16, y: 16, width: bounds.width - 32, height: 18)
-        subtitleLabel.frame = NSRect(x: 16, y: 36, width: bounds.width - 32, height: 14)
+        titleLabel.frame = NSRect(x: 16, y: 14, width: bounds.width - 32, height: 18)
+        subtitleLabel.frame = NSRect(x: 16, y: 32, width: bounds.width - 32, height: 14)
 
-        var y: CGFloat = 60
+        var y: CGFloat = 50
         for row in rows {
-            row.frame = NSRect(x: 12, y: y, width: bounds.width - 24, height: 38)
-            y += 46
+            row.frame = NSRect(x: 12, y: y, width: bounds.width - 24, height: 32)
+            y += 38
         }
 
         if !footerLabel.isHidden {
-            footerLabel.frame = NSRect(x: 16, y: bounds.height - 26, width: bounds.width - 32, height: 14)
+            footerLabel.frame = NSRect(x: 16, y: bounds.height - 24, width: bounds.width - 32, height: 14)
         }
     }
 }
@@ -275,11 +275,11 @@ private final class MappingActionRowView: NSView {
     override func layout() {
         super.layout()
 
-        titleLabel.frame = NSRect(x: 14, y: 9, width: 160, height: 18)
+        titleLabel.frame = NSRect(x: 14, y: 7, width: 160, height: 18)
         if let popup {
-            popup.frame = NSRect(x: bounds.width - 186, y: 5, width: 172, height: 28)
+            popup.frame = NSRect(x: bounds.width - 186, y: 3, width: 172, height: 26)
         } else {
-            detailLabel.frame = NSRect(x: bounds.width - 150, y: 10, width: 136, height: 16)
+            detailLabel.frame = NSRect(x: bounds.width - 150, y: 8, width: 136, height: 16)
         }
     }
 }
