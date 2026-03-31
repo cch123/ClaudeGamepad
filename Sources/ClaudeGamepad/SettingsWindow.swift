@@ -27,7 +27,7 @@ final class SettingsWindow: NSWindowController {
 
     convenience init() {
         let window = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 830, height: 620),
+            contentRect: NSRect(x: 0, y: 0, width: 880, height: 660),
             styleMask: [.titled, .closable, .resizable],
             backing: .buffered,
             defer: false
@@ -85,7 +85,7 @@ final class SettingsWindow: NSWindowController {
     private func buildButtonMappingTab() -> NSView {
         let container = NSView(frame: NSRect(x: 0, y: 50, width: 820, height: 530))
         gamepadView = GamepadConfigView(mapping: mapping)
-        gamepadView.frame = NSRect(x: 0, y: 0, width: 820, height: 580)
+        gamepadView.frame = NSRect(x: 0, y: 0, width: 860, height: 580)
         container.addSubview(gamepadView)
         return container
     }
