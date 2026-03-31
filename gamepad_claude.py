@@ -544,6 +544,8 @@ def on_hat(x: int, y: int):
 
 def handle_sticks(joystick):
     """Left stick for scrolling output."""
+    if Axis.LY is None:
+        return
     try:
         ly = joystick.get_axis(Axis.LY)
     except:
@@ -560,6 +562,8 @@ def handle_sticks(joystick):
 
 def handle_triggers(joystick):
     """Track LT/RT held state for modifier combos."""
+    if Axis.LT is None or Axis.RT is None:
+        return
     try:
         lt = joystick.get_axis(Axis.LT)
         rt = joystick.get_axis(Axis.RT)
@@ -632,23 +636,31 @@ def wait_for_dpad(joystick):
         time.sleep(0.016)
 
 
-def wait_for_axis(joystick, threshold=0.8):
-    """Wait for an axis to be pushed past threshold, return axis index."""
+def wait_for_axis(joystick, threshold=0.5, timeout=3.0):
+    """Wait for an axis to change significantly from its baseline, return axis index.
+    Returns None if timeout expires or a button is pressed (skip)."""
     pygame.event.pump()
     pygame.event.get()
-    # Read baseline
-    time.sleep(0.1)
+    time.sleep(0.2)
     pygame.event.pump()
-    while True:
+    pygame.event.get()
+    num_axes = joystick.get_numaxes()
+    baseline = [joystick.get_axis(i) for i in range(num_axes)]
+    start = time.time()
+    while time.time() - start < timeout:
         pygame.event.pump()
-        pygame.event.get()
-        for i in range(joystick.get_numaxes()):
+        for event in pygame.event.get():
+            if event.type == pygame.JOYBUTTONDOWN:
+                time.sleep(0.3)
+                return None
+        for i in range(num_axes):
             val = joystick.get_axis(i)
-            if abs(val) > threshold:
-                # Wait for release
+            delta = abs(val - baseline[i])
+            if delta > threshold:
                 time.sleep(0.3)
                 return i
         time.sleep(0.016)
+    return None
 
 
 def init_mode(joystick):
@@ -704,12 +716,22 @@ def init_mode(joystick):
                     config["dpad"][direction] = -1  # fallback
 
         # --- Axes ---
-        print("\n  ── 摇杆和扳机映射 ──\n")
+        print("\n  ── 摇杆和扳机映射 ──")
+        print("  （3秒内无响应自动跳过，连续2次超时则跳过剩余所有轴）\n")
+        consecutive_timeouts = 0
         for prompt_text, axis_name, _ in INIT_AXIS_PROMPTS:
             print(f"  👉 请操作: {prompt_text}", end="", flush=True)
             axis_idx = wait_for_axis(joystick)
-            config["axes"][axis_name] = axis_idx
-            print(f"  ✅ Axis {axis_idx}")
+            if axis_idx is not None:
+                config["axes"][axis_name] = axis_idx
+                print(f"  ✅ Axis {axis_idx}")
+                consecutive_timeouts = 0
+            else:
+                print(f"  ⏭️  已跳过")
+                consecutive_timeouts += 1
+                if consecutive_timeouts >= 2:
+                    print("\n  ⏭️  连续超时，跳过剩余摇杆/扳机校准")
+                    break
             time.sleep(0.3)
 
         # Save
@@ -735,7 +757,9 @@ def load_config():
         for key_name, btn_idx in config.get("buttons", {}).items():
             setattr(Btn, key_name, btn_idx)
 
-        # Apply axis mapping
+        # Apply axis mapping (reset all to None first, then set configured ones)
+        for attr in ("LX", "LY", "RX", "RY", "LT", "RT"):
+            setattr(Axis, attr, None)
         for axis_name, axis_idx in config.get("axes", {}).items():
             setattr(Axis, axis_name, axis_idx)
 
