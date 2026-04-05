@@ -114,6 +114,14 @@ final class GamepadManager {
             self?.onDpad(x: xValue, y: yValue)
         }
 
+        // Triggers — show prompt cheat sheet when held
+        gamepad.leftTrigger.valueChangedHandler = { [weak self] _, value, pressed in
+            self?.onTriggerChanged(isLT: true, value: value, pressed: pressed)
+        }
+        gamepad.rightTrigger.valueChangedHandler = { [weak self] _, value, pressed in
+            self?.onTriggerChanged(isLT: false, value: value, pressed: pressed)
+        }
+
         // Left stick for scrolling
         gamepad.leftThumbstick.valueChangedHandler = { [weak self] _, xValue, yValue in
             self?.onLeftStick(x: xValue, y: yValue)
@@ -122,12 +130,31 @@ final class GamepadManager {
 
     // MARK: - Modifier State
 
-    private var ltHeld: Bool {
-        controller?.extendedGamepad?.leftTrigger.value ?? 0 > 0.3
-    }
+    private var ltHeld = false
+    private var rtHeld = false
 
-    private var rtHeld: Bool {
-        controller?.extendedGamepad?.rightTrigger.value ?? 0 > 0.3
+    private func onTriggerChanged(isLT: Bool, value: Float, pressed: Bool) {
+        let held = value > 0.3
+        let wasLT = ltHeld
+        let wasRT = rtHeld
+        if isLT { ltHeld = held } else { rtHeld = held }
+
+        // Show cheat sheet when trigger is first pressed
+        if held && (isLT ? !wasLT : !wasRT) {
+            let prompts = isLT ? mapping.ltPrompts : mapping.rtPrompts
+            let label = isLT ? "LT" : "RT"
+            overlay.showPromptSheet(label: label, prompts: [
+                ("A", prompts.a),
+                ("B", prompts.b),
+                ("X", prompts.x),
+                ("Y", prompts.y),
+            ])
+        }
+
+        // Hide when both triggers are released
+        if !ltHeld && !rtHeld && (wasLT || wasRT) {
+            overlay.fadeOut()
+        }
     }
 
     // MARK: - Button Actions

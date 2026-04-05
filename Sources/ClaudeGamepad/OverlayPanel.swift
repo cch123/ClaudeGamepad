@@ -17,6 +17,7 @@ final class OverlayPanel: NSPanel {
     private let titleLabel = NSTextField(labelWithString: "")
     private let bodyLabel = NSTextField(wrappingLabelWithString: "")
     private let hintLabel = NSTextField(labelWithString: "")
+    private let promptSheetContainer = NSView()
     private var hideTimer: Timer?
 
     static let shared = OverlayPanel()
@@ -78,6 +79,9 @@ final class OverlayPanel: NSPanel {
         hintLabel.font = NSFont.systemFont(ofSize: 11)
         hintLabel.textColor = NSColor.white.withAlphaComponent(0.66)
         effectView.addSubview(hintLabel)
+
+        promptSheetContainer.isHidden = true
+        effectView.addSubview(promptSheetContainer)
     }
 
     /// Show a brief message (auto-hides after duration).
@@ -127,6 +131,197 @@ final class OverlayPanel: NSPanel {
         )
     }
 
+    /// Create a prompt card (rounded rect with text inside).
+    private func makeCard(text: String, color: NSColor, font: NSFont, maxWidth: CGFloat) -> (view: NSView, size: NSSize) {
+        let cardPadH: CGFloat = 12
+        let cardPadV: CGFloat = 8
+        let maxTextW = maxWidth - cardPadH * 2
+
+        // Use NSTextField's own layout engine for accurate sizing
+        let label = NSTextField(labelWithString: text)
+        label.font = font
+        label.textColor = .white
+        label.lineBreakMode = .byWordWrapping
+        label.maximumNumberOfLines = 0
+
+        // Measure single-line size
+        label.sizeToFit()
+        let singleW = label.frame.width
+        let singleH = label.frame.height
+
+        if singleW <= maxTextW {
+            // Fits in one line
+            label.frame = NSRect(x: cardPadH, y: cardPadV, width: singleW, height: singleH)
+        } else {
+            // Needs wrapping
+            label.preferredMaxLayoutWidth = maxTextW
+            label.frame.size.width = maxTextW
+            label.sizeToFit()
+            label.frame.origin = NSPoint(x: cardPadH, y: cardPadV)
+        }
+
+        let cardW = label.frame.width + cardPadH * 2
+        let cardH = label.frame.height + cardPadV * 2
+
+        let card = NSView(frame: NSRect(x: 0, y: 0, width: cardW, height: cardH))
+        card.wantsLayer = true
+        card.layer?.cornerRadius = 8
+        card.layer?.backgroundColor = color.withAlphaComponent(0.12).cgColor
+        card.layer?.borderWidth = 1
+        card.layer?.borderColor = color.withAlphaComponent(0.2).cgColor
+        card.addSubview(label)
+
+        return (card, NSSize(width: cardW, height: cardH))
+    }
+
+    /// Add a diamond badge with centered letter + PS5 symbol.
+    private func makeBadge(btn: String, ps: String, color: NSColor, badgeSize: CGFloat) -> NSView {
+        let container = NSView(frame: NSRect(x: 0, y: 0, width: badgeSize + 18, height: badgeSize))
+
+        let badge = NSView(frame: NSRect(x: 0, y: 0, width: badgeSize, height: badgeSize))
+        badge.wantsLayer = true
+        badge.layer?.cornerRadius = badgeSize / 2
+        badge.layer?.backgroundColor = color.withAlphaComponent(0.85).cgColor
+        container.addSubview(badge)
+
+        let letter = NSTextField(labelWithString: btn)
+        letter.font = NSFont.systemFont(ofSize: 11, weight: .bold)
+        letter.textColor = .white
+        letter.alignment = .center
+        letter.sizeToFit()
+        letter.frame = NSRect(
+            x: (badgeSize - letter.frame.width) / 2,
+            y: (badgeSize - letter.frame.height) / 2,
+            width: letter.frame.width,
+            height: letter.frame.height
+        )
+        container.addSubview(letter)
+
+        let psLabel = NSTextField(labelWithString: ps)
+        psLabel.font = NSFont.systemFont(ofSize: 13, weight: .medium)
+        psLabel.textColor = NSColor.white.withAlphaComponent(0.35)
+        psLabel.sizeToFit()
+        psLabel.frame.origin = NSPoint(x: badgeSize + 3, y: (badgeSize - psLabel.frame.height) / 2)
+        container.addSubview(psLabel)
+
+        return container
+    }
+
+    /// Show a prompt cheat sheet for trigger combos (LT/RT + face buttons).
+    /// Radial layout: diamond in center, prompts around it on cards.
+    func showPromptSheet(label: String, prompts: [(button: String, prompt: String)]) {
+        DispatchQueue.main.async { [self] in
+            hideTimer?.invalidate()
+
+            titleLabel.isHidden = true
+            bodyLabel.isHidden = true
+            hintLabel.isHidden = true
+            waveformView.isHidden = true
+            iconView.isHidden = true
+            accentBubble.isHidden = true
+
+            promptSheetContainer.subviews.forEach { $0.removeFromSuperview() }
+            promptSheetContainer.isHidden = false
+
+            let psLabels: [String: String] = ["A": "✕", "B": "○", "X": "□", "Y": "△"]
+            let buttonColors: [String: NSColor] = [
+                "A": .systemGreen, "B": .systemRed,
+                "X": .systemBlue, "Y": .systemYellow,
+            ]
+            let promptsDict = Dictionary(uniqueKeysWithValues: prompts.map { ($0.button, $0.prompt) })
+            let font = NSFont.systemFont(ofSize: 12, weight: .medium)
+
+            let outerPad: CGFloat = 20
+            let titleH: CGFloat = 22
+            let titleGap: CGFloat = 8
+            let badgeSize: CGFloat = 26
+            let step: CGFloat = 30
+            let cardGap: CGFloat = 10
+            let sideCardMaxW: CGFloat = 180
+            let tbCardMaxW: CGFloat = 240
+
+            // Measure all 4 cards
+            let cardY = makeCard(text: promptsDict["Y"] ?? "", color: buttonColors["Y"]!, font: font, maxWidth: tbCardMaxW)
+            let cardA = makeCard(text: promptsDict["A"] ?? "", color: buttonColors["A"]!, font: font, maxWidth: tbCardMaxW)
+            let cardX = makeCard(text: promptsDict["X"] ?? "", color: buttonColors["X"]!, font: font, maxWidth: sideCardMaxW)
+            let cardB = makeCard(text: promptsDict["B"] ?? "", color: buttonColors["B"]!, font: font, maxWidth: sideCardMaxW)
+
+            // Diamond area size
+            let diamondW = step * 2 + badgeSize + 18  // +18 for PS5 labels
+            let diamondH = step * 2 + badgeSize
+
+            // Panel dimensions
+            let centerColW = max(diamondW, cardY.size.width, cardA.size.width)
+            let panelWidth = outerPad + cardX.size.width + cardGap + centerColW + cardGap + cardB.size.width + outerPad
+            let sideRowH = max(diamondH, cardX.size.height, cardB.size.height)
+            let panelHeight = outerPad + titleH + titleGap + cardY.size.height + cardGap + sideRowH + cardGap + cardA.size.height + outerPad
+
+            // Center of diamond
+            let cx = outerPad + cardX.size.width + cardGap + centerColW / 2
+            let cyBase = outerPad + cardA.size.height + cardGap
+            let cy = cyBase + sideRowH / 2
+
+            // ── Title ──
+            let titleField = NSTextField(labelWithString: "⚡ \(label) Quick Prompts")
+            titleField.font = NSFont.systemFont(ofSize: 13, weight: .semibold)
+            titleField.textColor = NSColor.white.withAlphaComponent(0.55)
+            titleField.frame = NSRect(x: outerPad, y: panelHeight - outerPad - titleH, width: panelWidth - outerPad * 2, height: titleH)
+            promptSheetContainer.addSubview(titleField)
+
+            // ── Diamond badges ──
+            let badges: [(String, CGFloat, CGFloat)] = [
+                ("Y", cx, cy + step),
+                ("A", cx, cy - step),
+                ("X", cx - step, cy),
+                ("B", cx + step, cy),
+            ]
+            for (btn, bx, by) in badges {
+                let color = buttonColors[btn]!
+                let ps = psLabels[btn]!
+                let badgeView = makeBadge(btn: btn, ps: ps, color: color, badgeSize: badgeSize)
+                badgeView.frame.origin = NSPoint(x: bx - badgeSize / 2, y: by - badgeSize / 2)
+                promptSheetContainer.addSubview(badgeView)
+            }
+
+            // ── Cards ──
+            // Y card: centered above diamond
+            cardY.view.frame.origin = NSPoint(
+                x: cx - cardY.size.width / 2,
+                y: cy + step + badgeSize / 2 + cardGap
+            )
+            promptSheetContainer.addSubview(cardY.view)
+
+            // A card: centered below diamond
+            cardA.view.frame.origin = NSPoint(
+                x: cx - cardA.size.width / 2,
+                y: cy - step - badgeSize / 2 - cardGap - cardA.size.height
+            )
+            promptSheetContainer.addSubview(cardA.view)
+
+            // X card: to the left of diamond, vertically centered
+            cardX.view.frame.origin = NSPoint(
+                x: cx - step - badgeSize / 2 - cardGap - cardX.size.width,
+                y: cy - cardX.size.height / 2
+            )
+            promptSheetContainer.addSubview(cardX.view)
+
+            // B card: to the right of diamond, vertically centered
+            cardB.view.frame.origin = NSPoint(
+                x: cx + step + badgeSize / 2 + 18 + cardGap,
+                y: cy - cardB.size.height / 2
+            )
+            promptSheetContainer.addSubview(cardB.view)
+
+            promptSheetContainer.frame = NSRect(x: 0, y: 0, width: panelWidth, height: panelHeight)
+            setContentSize(NSSize(width: panelWidth, height: panelHeight))
+            effectView.frame = NSRect(origin: .zero, size: NSSize(width: panelWidth, height: panelHeight))
+
+            positionOnScreen()
+            orderFrontRegardless()
+            alphaValue = 1
+        }
+    }
+
     /// Show transcription result.
     func showTranscription(_ text: String) {
         present(
@@ -163,6 +358,13 @@ final class OverlayPanel: NSPanel {
     ) {
         DispatchQueue.main.async { [self] in
             hideTimer?.invalidate()
+
+            // Restore standard elements if prompt sheet was showing
+            promptSheetContainer.isHidden = true
+            promptSheetContainer.subviews.forEach { $0.removeFromSuperview() }
+            titleLabel.isHidden = false
+            bodyLabel.isHidden = false
+            accentBubble.isHidden = false
 
             titleLabel.stringValue = title
             bodyLabel.stringValue = body
