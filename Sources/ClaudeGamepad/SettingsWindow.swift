@@ -1615,8 +1615,10 @@ private final class SidebarSelectionButton: NSButton {
 
     override func layout() {
         super.layout()
-        iconView.frame = NSRect(x: 14, y: 13, width: 16, height: 16)
-        titleLabel.frame = NSRect(x: 38, y: 10, width: bounds.width - 50, height: 20)
+        let midY = bounds.height / 2
+        iconView.frame = NSRect(x: 14, y: midY - 8, width: 16, height: 16)
+        titleLabel.sizeToFit()
+        titleLabel.frame = NSRect(x: 38, y: midY - titleLabel.frame.height / 2, width: bounds.width - 50, height: titleLabel.frame.height)
     }
 
     private func applyStyle() {
