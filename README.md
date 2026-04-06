@@ -17,6 +17,7 @@ Supports Xbox, PS5 DualSense, and any MFi-compatible controller. Includes voice 
 - **Quick prompts** - LT/RT + face button sends preset prompts
 - **Command combos** - hold LT+RT to enter command mode with Helldivers or fighting game style input sequences
 - **Preset menu** - Start button opens D-pad-navigable prompt list
+- **Overlay navigation** - a configurable Guide Key Combo can open Vibe Island or similar overlays, then temporarily route D-pad arrows to the frontmost overlay
 - **Combo prefix conflict detection** - settings UI warns when one combo shadows another
 - **Floating HUD** - non-intrusive overlay shows button feedback, combos, and transcription
 - **macOS native** - pure Swift + AppKit, no Electron, no Python
@@ -41,6 +42,8 @@ Supports Xbox, PS5 DualSense, and any MFi-compatible controller. Includes voice 
 | LT + RT + Select | Quit |
 
 All mappings are fully customizable in Settings.
+
+Note: macOS reserves the hardware Guide / Home / PS button. If you want to open Vibe Island or another overlay from the controller, map any capturable button to the `Combo` action instead.
 
 ## Screenshots
 
@@ -107,6 +110,16 @@ cp .build/release/ClaudeGamepad /usr/local/bin/
 5. Focus your terminal running Claude Code
 6. Start pressing buttons!
 
+## Vibe Island / Overlay Navigation
+
+Use this when you want a controller button to open a keyboard-driven overlay such as Vibe Island.
+
+1. In **Settings > Button Mapping**, assign any spare button to the `Combo` action.
+2. Configure the keyboard shortcut for that action in the Guide Key Combo controls. The default is `⌘G`.
+3. Trigger that button to open the overlay.
+4. For a short window after the overlay opens, D-pad arrows are routed to the frontmost overlay app instead of your terminal.
+5. If you click back into your terminal, the app stops reclaiming focus and arrow input returns to the terminal path.
+
 ## Configuration
 
 Click the menu bar icon > **Settings** to open the settings window. The settings panel uses a dark-themed card layout with five tabs.
@@ -117,7 +130,7 @@ Choose your **controller style** — Xbox or PS5. This changes all button labels
 
 ### Button Mapping
 
-All button bindings organized by region: Shoulders, Face Buttons, Navigation, and System & Sticks. Each button has a dropdown to pick its action. LT/RT (L2/R2) serve as modifier keys — their quick prompts are managed in the Preset Prompts tab.
+All button bindings organized by region: Shoulders, Face Buttons, Navigation, and System & Sticks. Each button has a dropdown to pick its action. LT/RT (L2/R2) serve as modifier keys, so their quick prompts are managed in the Preset Prompts tab. If you assign a button to `Combo`, the row expands to show the keyboard shortcut used to open an overlay window.
 
 ### Preset Prompts
 
@@ -147,6 +160,12 @@ A top-level Voice Pipeline status bar shows engine, binary install state, model 
 4. HUD shows transcription with confirm/cancel options
 5. Press **A / ✕** to paste to terminal, or **B / ○** to cancel
 
+## Troubleshooting
+
+- **The controller opens Vibe Island but D-pad does nothing**: make sure Accessibility permission is granted and the overlay is actually frontmost after the combo fires.
+- **The terminal loses focus after using an overlay**: current builds stop routing arrows to the overlay as soon as you manually switch back to the terminal.
+- **The physical Guide / Home / PS button does not trigger anything**: this is a macOS limitation. Bind another button to `Combo` and use that button to launch the overlay shortcut.
+
 ## Architecture
 
 ```
@@ -154,7 +173,7 @@ Sources/ClaudeGamepad/
   main.swift              # Entry point, menu bar app setup
   AppDelegate.swift       # Status bar icon, menu, permissions
   GamepadManager.swift    # GCController input handling + button mapping
-  KeySimulator.swift      # CGEvent keyboard simulation
+  KeySimulator.swift      # keyboard simulation + temporary overlay routing
   SpeechEngine.swift      # Apple SFSpeechRecognizer integration
   WhisperEngine.swift     # Local whisper.cpp CLI integration
   LLMRefiner.swift        # Optional LLM speech post-processing
