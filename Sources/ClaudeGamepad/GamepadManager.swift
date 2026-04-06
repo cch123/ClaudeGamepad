@@ -105,7 +105,9 @@ final class GamepadManager {
             if pressed { self?.onSelect() }
         }
 
-        // Guide / Home / PS button
+        // Guide / Home / PS button — disable system gesture so macOS
+        // doesn't intercept it to open Apple Arcade / Game Center.
+        gamepad.buttonHome?.preferredSystemGestureState = .disabled
         gamepad.buttonHome?.pressedChangedHandler = { [weak self] _, _, pressed in
             if pressed { self?.onGuide() }
         }
