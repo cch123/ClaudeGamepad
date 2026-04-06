@@ -120,9 +120,21 @@ final class GamepadManager {
             if pressed { self?.onStickClick() }
         }
 
-        // D-pad
-        gamepad.dpad.valueChangedHandler = { [weak self] _, xValue, yValue in
-            self?.onDpad(x: xValue, y: yValue)
+        // D-pad. Use per-direction press handlers instead of the aggregate
+        // valueChanged callback so repeated taps on the same direction don't
+        // get dropped when the pad doesn't fully report a neutral state
+        // between taps.
+        gamepad.dpad.up.pressedChangedHandler = { [weak self] _, _, pressed in
+            if pressed { self?.onDpadPress(.up) }
+        }
+        gamepad.dpad.down.pressedChangedHandler = { [weak self] _, _, pressed in
+            if pressed { self?.onDpadPress(.down) }
+        }
+        gamepad.dpad.left.pressedChangedHandler = { [weak self] _, _, pressed in
+            if pressed { self?.onDpadPress(.left) }
+        }
+        gamepad.dpad.right.pressedChangedHandler = { [weak self] _, _, pressed in
+            if pressed { self?.onDpadPress(.right) }
         }
 
         // Triggers — show prompt cheat sheet when held
@@ -360,43 +372,45 @@ final class GamepadManager {
         guard !combo.isEmpty else { return }
         overlay.showMessage("🎮 \(combo.displayString)")
         keys.pressCombo(combo)
+        keys.armDirectionalTargetCapture()
     }
 
     private func onStickClick() {
         executeAction(mapping.buttonActions.stickClick)
     }
 
-    private var lastDpadInput: (Float, Float) = (0, 0)
-
-    private func onDpad(x: Float, y: Float) {
-        // Command mode: feed d-pad into combo buffer (on press only, not release)
+    private func onDpadPress(_ direction: ComboInput) {
         if isInCommandMode {
-            let wasNeutral = abs(lastDpadInput.0) < 0.5 && abs(lastDpadInput.1) < 0.5
-            lastDpadInput = (x, y)
-            guard wasNeutral else { return }  // only register new press
-            if y > 0.5 { comboAppend(.up) }
-            else if y < -0.5 { comboAppend(.down) }
-            else if x > 0.5 { comboAppend(.right) }
-            else if x < -0.5 { comboAppend(.left) }
+            comboAppend(direction)
             return
         }
-        lastDpadInput = (x, y)
 
         if isInPresetMenu {
-            if y > 0.5 {
+            switch direction {
+            case .up:
                 presetIndex = (presetIndex - 1 + mapping.allPrompts.count) % mapping.allPrompts.count
                 showPresetOverlay()
-            } else if y < -0.5 {
+            case .down:
                 presetIndex = (presetIndex + 1) % mapping.allPrompts.count
                 showPresetOverlay()
+            case .left, .right, .a, .b, .x, .y:
+                break
             }
             return
         }
 
-        if y > 0.5 { executeAction(mapping.buttonActions.dpadUp) }
-        else if y < -0.5 { executeAction(mapping.buttonActions.dpadDown) }
-        if x > 0.5 { executeAction(mapping.buttonActions.dpadRight) }
-        else if x < -0.5 { executeAction(mapping.buttonActions.dpadLeft) }
+        switch direction {
+        case .up:
+            executeAction(mapping.buttonActions.dpadUp)
+        case .down:
+            executeAction(mapping.buttonActions.dpadDown)
+        case .left:
+            executeAction(mapping.buttonActions.dpadLeft)
+        case .right:
+            executeAction(mapping.buttonActions.dpadRight)
+        case .a, .b, .x, .y:
+            break
+        }
     }
 
     private var lastScrollTime: TimeInterval = 0
