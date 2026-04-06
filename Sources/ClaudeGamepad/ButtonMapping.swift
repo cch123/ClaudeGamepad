@@ -232,10 +232,10 @@ struct ButtonMapping: Codable {
             b: .ctrlC,
             x: .accept,
             y: .reject,
-            lb: .tab,
+            lb: .guideCombo,
             rb: .escape,
-            start: .presetMenu,
-            select: .clear,
+            start: .guideCombo,
+            select: .guideCombo,
             stickClick: .voiceInput,
             dpadUp: .arrowUp,
             dpadDown: .arrowDown,
@@ -284,27 +284,39 @@ struct ButtonMapping: Codable {
         ComboEntry(name: "Super", inputs: [.down, .right, .down, .right, .a], prompt: "find and fix all bugs in this file", style: .fighting),
     ]
 
-    static let `default` = ButtonMapping(
-        categories: defaultCategories,
-        presetPrompts: defaultCategories.flatMap { $0.prompts },
-        ltPrompts: QuickPrompts(
-            a: "fix the failing tests",
-            b: "explain this error",
-            x: "continue",
-            y: "undo the last change"
-        ),
-        rtPrompts: QuickPrompts(
-            a: "run the tests",
-            b: "show me the diff",
-            x: "looks good, commit this",
-            y: "refactor this to be cleaner"
-        ),
-        buttonActions: .default,
-        guideKeyCombosMap: ["start": [KeyCombo(key: "G", command: true)]],
-        controllerStyle: .xbox,
-        comboStyle: .helldivers,
-        combos: defaultCombos
-    )
+    static let `default`: ButtonMapping = {
+        if let url = Bundle.module.url(forResource: "default_config", withExtension: "json"),
+           let data = try? Data(contentsOf: url),
+           let mapping = try? JSONDecoder().decode(ButtonMapping.self, from: data) {
+            return mapping
+        }
+        // Hardcoded fallback in case bundled file is missing
+        return ButtonMapping(
+            categories: defaultCategories,
+            presetPrompts: defaultCategories.flatMap { $0.prompts },
+            ltPrompts: QuickPrompts(
+                a: "codex",
+                b: "claude",
+                x: "copilot",
+                y: "gemini"
+            ),
+            rtPrompts: QuickPrompts(
+                a: "run the tests",
+                b: "show me the diff",
+                x: "looks good, commit this and push",
+                y: "refactor this to be cleaner"
+            ),
+            buttonActions: .default,
+            guideKeyCombosMap: [
+                "start": [KeyCombo(key: "G", command: true)],
+                "select": [KeyCombo(key: "T", command: true)],
+                "lb": [KeyCombo(key: "W", command: true)],
+            ],
+            controllerStyle: .ps5,
+            comboStyle: .helldivers,
+            combos: defaultCombos
+        )
+    }()
 
     // MARK: - Guide Button (per-button key combos)
 

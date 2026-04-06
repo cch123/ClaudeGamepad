@@ -1,0 +1,46 @@
+{
+  "categories": [
+    { "name": "Debug", "prompts": ["fix the failing tests", "find and fix the bug", "explain this error"] },
+    { "name": "Code",  "prompts": ["explain what this code does", "refactor this to be cleaner", "optimize this for performance", "add types and documentation"] },
+    { "name": "Edit",  "prompts": ["add error handling", "write tests for this", "continue", "undo the last change"] },
+    { "name": "Git",   "prompts": ["show me the diff", "looks good, commit this"] }
+  ],
+  "presetPrompts": ["fix the failing tests", "find and fix the bug", "explain this error", "explain what this code does", "refactor this to be cleaner", "optimize this for performance", "add types and documentation", "add error handling", "write tests for this", "continue", "undo the last change", "show me the diff", "looks good, commit this"],
+  "ltPrompts": { "a": "codex", "b": "claude", "x": "copilot", "y": "gemini" },
+  "rtPrompts": { "a": "run the tests", "b": "show me the diff", "x": "looks good, commit this and push", "y": "refactor this to be cleaner" },
+  "buttonActions": {
+    "a": "Enter",
+    "b": "Ctrl+C",
+    "x": "Accept (y+Enter)",
+    "y": "Reject (n+Enter)",
+    "lb": "Combo",
+    "rb": "Escape",
+    "start": "Combo",
+    "select": "Combo",
+    "stickClick": "Voice Input",
+    "dpadUp": "Arrow Up (↑)",
+    "dpadDown": "Arrow Down (↓)",
+    "dpadLeft": "Arrow Left (←)",
+    "dpadRight": "Arrow Right (→)"
+  },
+  "guideKeyCombosMap": {
+    "start":  [{ "key": "G", "command": true, "control": false, "option": false, "shift": false }],
+    "select": [{ "key": "T", "command": true, "control": false, "option": false, "shift": false }],
+    "lb":     [{ "key": "W", "command": true, "control": false, "option": false, "shift": false }]
+  },
+  "controllerStyle": "PS5",
+  "comboStyle": "Helldivers 2",
+  "combos": [
+    { "name": "Reinforce",  "inputs": ["↑","↓","→","←","↑"], "prompt": "fix all the errors",              "style": "Helldivers 2" },
+    { "name": "Resupply",   "inputs": ["↓","↓","↑","→"],     "prompt": "add the missing dependencies",    "style": "Helldivers 2" },
+    { "name": "Air Strike", "inputs": ["↑","→","↓","→"],     "prompt": "delete all unused code",           "style": "Helldivers 2" },
+    { "name": "Shield",     "inputs": ["↓","↑","←","→"],     "prompt": "add error handling to this",       "style": "Helldivers 2" },
+    { "name": "Orbital",    "inputs": ["→","→","↑"],         "prompt": "refactor this completely",          "style": "Helldivers 2" },
+    { "name": "EAT",        "inputs": ["↑","↓","←","↑","→"], "prompt": "write comprehensive tests",        "style": "Helldivers 2" },
+    { "name": "Hadouken",   "inputs": ["↓","→","A"],         "prompt": "run the tests",                    "style": "Fighting Game" },
+    { "name": "Shoryuken",  "inputs": ["→","↓","→","A"],     "prompt": "fix the bug",                      "style": "Fighting Game" },
+    { "name": "Tatsumaki",  "inputs": ["↓","←","B"],         "prompt": "explain this code",                "style": "Fighting Game" },
+    { "name": "Sonic Boom", "inputs": ["←","→","X"],         "prompt": "looks good, commit this",           "style": "Fighting Game" },
+    { "name": "Super",      "inputs": ["↓","→","↓","→","A"], "prompt": "find and fix all bugs in this file","style": "Fighting Game" }
+  ]
+}

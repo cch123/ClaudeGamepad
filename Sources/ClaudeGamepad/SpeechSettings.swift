@@ -9,13 +9,20 @@ enum SpeechEngineType: String, Codable, CaseIterable {
 /// Persistent settings for speech recognition and LLM refinement.
 struct SpeechSettings: Codable {
     var engineType: SpeechEngineType = .system
-    var whisperModel: String = "ggml-base.bin"   // whisper.cpp model file name
+    var whisperModel: String = "ggml-large-v3.bin"   // whisper.cpp model file name
     var llmEnabled: Bool = false
     var llmAPIURL: String = "http://localhost:11434/v1"
     var llmAPIKey: String = ""
     var llmModel: String = "qwen2.5:7b"
 
-    static let `default` = SpeechSettings()
+    static let `default`: SpeechSettings = {
+        if let url = Bundle.module.url(forResource: "default_speech_settings", withExtension: "json"),
+           let data = try? Data(contentsOf: url),
+           let settings = try? JSONDecoder().decode(SpeechSettings.self, from: data) {
+            return settings
+        }
+        return SpeechSettings()
+    }()
 
     // MARK: - Persistence
 

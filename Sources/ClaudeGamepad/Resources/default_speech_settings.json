@@ -1,0 +1,8 @@
+{
+  "engineType": "System",
+  "whisperModel": "ggml-large-v3.bin",
+  "llmEnabled": false,
+  "llmAPIURL": "http://localhost:11434/v1",
+  "llmAPIKey": "",
+  "llmModel": "qwen2.5:7b"
+}
