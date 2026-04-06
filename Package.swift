@@ -8,6 +8,9 @@ let package = Package(
         .executableTarget(
             name: "ClaudeGamepad",
             path: "Sources/ClaudeGamepad",
+            resources: [
+                .copy("Resources"),
+            ],
             linkerSettings: [
                 .linkedFramework("AppKit"),
                 .linkedFramework("GameController"),

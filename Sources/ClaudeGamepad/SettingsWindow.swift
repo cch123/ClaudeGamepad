@@ -286,7 +286,8 @@ final class SettingsWindow: NSWindowController, NSTextViewDelegate {
 
     // MARK: - General
 
-    private var controllerStylePopup: NSPopUpButton!
+    private var xboxStyleCard: ControllerStyleCard!
+    private var ps5StyleCard: ControllerStyleCard!
 
     private func buildGeneralTab() -> NSView {
         let page = FlippedView(frame: contentContainer.bounds)
@@ -298,44 +299,86 @@ final class SettingsWindow: NSWindowController, NSTextViewDelegate {
             subtitle: SettingsSection.general.subtitle
         )
 
-        // Controller Style card
-        let card = SurfaceCardView(frame: NSRect(x: pageInset, y: bodyY, width: page.bounds.width - pageInset * 2, height: 80))
-        card.autoresizingMask = [.width]
-        page.addSubview(card)
-
+        // Section label
         let styleLabel = NSTextField(labelWithString: "Controller Style")
         styleLabel.font = NSFont.systemFont(ofSize: 14, weight: .semibold)
         styleLabel.textColor = .white
-        styleLabel.frame = NSRect(x: cardInset, y: 14, width: 160, height: 20)
-        card.addSubview(styleLabel)
+        styleLabel.frame = NSRect(x: pageInset, y: bodyY, width: 200, height: 20)
+        page.addSubview(styleLabel)
 
         let styleHint = NSTextField(labelWithString: "Changes button labels and colors across all UI and overlays.")
         styleHint.font = NSFont.systemFont(ofSize: 11)
         styleHint.textColor = NSColor.white.withAlphaComponent(0.5)
-        styleHint.frame = NSRect(x: cardInset, y: 38, width: 400, height: 16)
-        card.addSubview(styleHint)
+        styleHint.frame = NSRect(x: pageInset, y: bodyY + 22, width: 500, height: 16)
+        page.addSubview(styleHint)
 
-        controllerStylePopup = NSPopUpButton(frame: NSRect(x: card.bounds.width - 180, y: 22, width: 160, height: 28))
-        controllerStylePopup.autoresizingMask = [.minXMargin]
-        for style in ControllerStyle.allCases {
-            controllerStylePopup.addItem(withTitle: style.rawValue)
-        }
-        controllerStylePopup.selectItem(withTitle: mapping.controllerStyle.rawValue)
-        controllerStylePopup.target = self
-        controllerStylePopup.action = #selector(controllerStyleChanged(_:))
-        card.addSubview(controllerStylePopup)
+        // Two side-by-side cards
+        let cardsY = bodyY + 52
+        let fullWidth = page.bounds.width - pageInset * 2
+        let cardGap: CGFloat = 16
+        let cardWidth = (fullWidth - cardGap) / 2
+        let cardHeight: CGFloat = 220
+
+        let xboxSVG = loadResourceImage(named: "xbox.svg")
+        xboxStyleCard = ControllerStyleCard(
+            frame: NSRect(x: pageInset, y: cardsY, width: cardWidth, height: cardHeight),
+            title: "Xbox",
+            subtitle: "A / B / X / Y  \u{00B7}  LB / RB / LT / RT",
+            image: xboxSVG,
+            selected: mapping.controllerStyle == .xbox
+        )
+        xboxStyleCard.autoresizingMask = [.width]
+        xboxStyleCard.target = self
+        xboxStyleCard.action = #selector(xboxStyleTapped)
+        page.addSubview(xboxStyleCard)
+
+        let ps5SVG = loadResourceImage(named: "ps5.svg")
+        ps5StyleCard = ControllerStyleCard(
+            frame: NSRect(x: pageInset + cardWidth + cardGap, y: cardsY, width: cardWidth, height: cardHeight),
+            title: "PS5",
+            subtitle: "\u{2715} / \u{25CB} / \u{25A1} / \u{25B3}  \u{00B7}  L1 / R1 / L2 / R2",
+            image: ps5SVG,
+            selected: mapping.controllerStyle == .ps5
+        )
+        ps5StyleCard.autoresizingMask = [.width, .minXMargin]
+        ps5StyleCard.target = self
+        ps5StyleCard.action = #selector(ps5StyleTapped)
+        page.addSubview(ps5StyleCard)
 
         return page
     }
 
-    @objc private func controllerStyleChanged(_ sender: NSPopUpButton) {
-        guard let title = sender.selectedItem?.title,
-              let style = ControllerStyle.allCases.first(where: { $0.rawValue == title }) else { return }
+    private func loadResourceImage(named name: String) -> NSImage? {
+        // Try with subdirectory first (SPM .copy layout)
+        if let url = Bundle.module.url(forResource: name, withExtension: nil, subdirectory: "Resources") {
+            return NSImage(contentsOf: url)
+        }
+        // Fallback: forResource splits name and extension
+        let parts = name.split(separator: ".", maxSplits: 1)
+        if parts.count == 2,
+           let url = Bundle.module.url(forResource: String(parts[0]), withExtension: String(parts[1]), subdirectory: "Resources") {
+            return NSImage(contentsOf: url)
+        }
+        return nil
+    }
+
+    @objc private func xboxStyleTapped() {
+        applyControllerStyle(.xbox)
+    }
+
+    @objc private func ps5StyleTapped() {
+        applyControllerStyle(.ps5)
+    }
+
+    private func applyControllerStyle(_ style: ControllerStyle) {
         mapping.controllerStyle = style
         mapping.save()
+        xboxStyleCard?.isSelectedStyle = (style == .xbox)
+        ps5StyleCard?.isSelectedStyle = (style == .ps5)
         // Clear cached section views so they rebuild with new labels
-        sectionViews.removeAll()
-        selectSection(currentSection)
+        sectionViews.removeValue(forKey: .buttons)
+        sectionViews.removeValue(forKey: .prompts)
+        sectionViews.removeValue(forKey: .combos)
     }
 
     // MARK: - Button Mapping
@@ -1699,5 +1742,108 @@ private final class PreviewBoxView: NSView {
         surgeDividerColor.setStroke()
         path.lineWidth = 1
         path.stroke()
+    }
+}
+
+// MARK: - Controller Style Card
+
+private let styleCardSelectedBorder = NSColor(red: 0.35, green: 0.55, blue: 1.0, alpha: 1.0)
+
+private final class ControllerStyleCard: NSButton {
+    private let imageView = NSImageView(frame: .zero)
+    private let titleLabel = NSTextField(labelWithString: "")
+    private let subtitleLabel = NSTextField(labelWithString: "")
+    private let checkmarkView = NSImageView(frame: .zero)
+
+    var isSelectedStyle: Bool = false {
+        didSet { applyStyle() }
+    }
+
+    init(frame: NSRect, title: String, subtitle: String, image: NSImage?, selected: Bool) {
+        super.init(frame: frame)
+        self.title = ""
+        bezelStyle = .regularSquare
+        isBordered = false
+        setButtonType(.momentaryChange)
+        imagePosition = .noImage
+        wantsLayer = true
+        layer?.cornerRadius = 16
+
+        // Controller image
+        imageView.image = image
+        imageView.imageScaling = .scaleProportionallyDown
+        imageView.imageAlignment = .alignCenter
+        addSubview(imageView)
+
+        // Title
+        titleLabel.stringValue = title
+        titleLabel.font = NSFont.systemFont(ofSize: 16, weight: .semibold)
+        titleLabel.textColor = .white
+        titleLabel.alignment = .center
+        titleLabel.isBezeled = false
+        titleLabel.isEditable = false
+        titleLabel.drawsBackground = false
+        addSubview(titleLabel)
+
+        // Subtitle (button labels preview)
+        subtitleLabel.stringValue = subtitle
+        subtitleLabel.font = NSFont.systemFont(ofSize: 10)
+        subtitleLabel.textColor = NSColor.white.withAlphaComponent(0.45)
+        subtitleLabel.alignment = .center
+        subtitleLabel.isBezeled = false
+        subtitleLabel.isEditable = false
+        subtitleLabel.drawsBackground = false
+        addSubview(subtitleLabel)
+
+        // Checkmark indicator
+        let symbolConfig = NSImage.SymbolConfiguration(pointSize: 14, weight: .bold)
+        checkmarkView.image = NSImage(systemSymbolName: "checkmark.circle.fill", accessibilityDescription: nil)?
+            .withSymbolConfiguration(symbolConfig)
+        checkmarkView.contentTintColor = styleCardSelectedBorder
+        addSubview(checkmarkView)
+
+        isSelectedStyle = selected
+        applyStyle()
+    }
+
+    required init?(coder: NSCoder) { fatalError() }
+
+    override func layout() {
+        super.layout()
+        let w = bounds.width
+        let h = bounds.height
+
+        // Image area: top portion
+        let imageTop: CGFloat = 16
+        let imageHeight = h - 80
+        imageView.frame = NSRect(x: 20, y: imageTop, width: w - 40, height: imageHeight)
+
+        // Title below image
+        let titleY = imageTop + imageHeight + 8
+        titleLabel.frame = NSRect(x: 0, y: titleY, width: w, height: 22)
+
+        // Subtitle below title
+        subtitleLabel.frame = NSRect(x: 0, y: titleY + 22, width: w, height: 16)
+
+        // Checkmark in top-right corner
+        checkmarkView.frame = NSRect(x: w - 30, y: 10, width: 20, height: 20)
+    }
+
+    private func applyStyle() {
+        if isSelectedStyle {
+            layer?.backgroundColor = surgeCardColor.withAlphaComponent(0.96).cgColor
+            layer?.borderWidth = 2
+            layer?.borderColor = styleCardSelectedBorder.cgColor
+            checkmarkView.isHidden = false
+        } else {
+            layer?.backgroundColor = surgeCardColor.withAlphaComponent(0.60).cgColor
+            layer?.borderWidth = 1
+            layer?.borderColor = surgeDividerColor.cgColor
+            checkmarkView.isHidden = true
+        }
+    }
+
+    override func sendAction(_ action: Selector?, to target: Any?) -> Bool {
+        return super.sendAction(action, to: target)
     }
 }
