@@ -24,11 +24,13 @@ final class OverlayPanel: NSPanel {
 
     private init() {
         let effectView = NSVisualEffectView()
-        effectView.material = .hudWindow
+        effectView.material = .sidebar
+        effectView.blendingMode = .behindWindow
         effectView.state = .active
         effectView.wantsLayer = true
         effectView.layer?.cornerRadius = 20
         effectView.layer?.masksToBounds = true
+        effectView.layer?.backgroundColor = NSColor(red: 0.08, green: 0.08, blue: 0.12, alpha: 0.88).cgColor
         self.effectView = effectView
 
         super.init(
@@ -66,18 +68,18 @@ final class OverlayPanel: NSPanel {
         waveformView.isHidden = true
         effectView.addSubview(waveformView)
 
-        titleLabel.font = NSFont.systemFont(ofSize: 12, weight: .semibold)
-        titleLabel.textColor = NSColor.white.withAlphaComponent(0.86)
+        titleLabel.font = NSFont.systemFont(ofSize: 13, weight: .semibold)
+        titleLabel.textColor = NSColor.white.withAlphaComponent(0.9)
         effectView.addSubview(titleLabel)
 
-        bodyLabel.font = NSFont.systemFont(ofSize: 14, weight: .medium)
+        bodyLabel.font = NSFont.systemFont(ofSize: 15, weight: .medium)
         bodyLabel.textColor = .white
         bodyLabel.maximumNumberOfLines = 3
         bodyLabel.lineBreakMode = .byTruncatingTail
         effectView.addSubview(bodyLabel)
 
-        hintLabel.font = NSFont.systemFont(ofSize: 11)
-        hintLabel.textColor = NSColor.white.withAlphaComponent(0.66)
+        hintLabel.font = NSFont.systemFont(ofSize: 12)
+        hintLabel.textColor = NSColor.white.withAlphaComponent(0.7)
         effectView.addSubview(hintLabel)
 
         promptSheetContainer.isHidden = true
@@ -133,14 +135,14 @@ final class OverlayPanel: NSPanel {
 
     /// Create a prompt card (rounded rect with text inside).
     private func makeCard(text: String, color: NSColor, font: NSFont, maxWidth: CGFloat) -> (view: NSView, size: NSSize) {
-        let cardPadH: CGFloat = 12
-        let cardPadV: CGFloat = 8
+        let cardPadH: CGFloat = 14
+        let cardPadV: CGFloat = 10
         let maxTextW = maxWidth - cardPadH * 2
 
         // Use NSTextField's own layout engine for accurate sizing
         let label = NSTextField(labelWithString: text)
         label.font = font
-        label.textColor = .white
+        label.textColor = NSColor.white.withAlphaComponent(0.95)
         label.lineBreakMode = .byWordWrapping
         label.maximumNumberOfLines = 0
 
@@ -165,10 +167,10 @@ final class OverlayPanel: NSPanel {
 
         let card = NSView(frame: NSRect(x: 0, y: 0, width: cardW, height: cardH))
         card.wantsLayer = true
-        card.layer?.cornerRadius = 8
-        card.layer?.backgroundColor = color.withAlphaComponent(0.12).cgColor
+        card.layer?.cornerRadius = 10
+        card.layer?.backgroundColor = color.withAlphaComponent(0.18).cgColor
         card.layer?.borderWidth = 1
-        card.layer?.borderColor = color.withAlphaComponent(0.2).cgColor
+        card.layer?.borderColor = color.withAlphaComponent(0.30).cgColor
         card.addSubview(label)
 
         return (card, NSSize(width: cardW, height: cardH))
@@ -176,16 +178,23 @@ final class OverlayPanel: NSPanel {
 
     /// Add a diamond badge with centered letter + PS5 symbol.
     private func makeBadge(btn: String, ps: String, color: NSColor, badgeSize: CGFloat) -> NSView {
-        let container = NSView(frame: NSRect(x: 0, y: 0, width: badgeSize + 18, height: badgeSize))
+        let container = NSView(frame: NSRect(x: 0, y: 0, width: badgeSize + 20, height: badgeSize))
 
         let badge = NSView(frame: NSRect(x: 0, y: 0, width: badgeSize, height: badgeSize))
         badge.wantsLayer = true
         badge.layer?.cornerRadius = badgeSize / 2
-        badge.layer?.backgroundColor = color.withAlphaComponent(0.85).cgColor
+        badge.layer?.backgroundColor = color.withAlphaComponent(0.9).cgColor
+
+        // Subtle glow shadow
+        badge.shadow = NSShadow()
+        badge.layer?.shadowColor = color.withAlphaComponent(0.5).cgColor
+        badge.layer?.shadowOffset = .zero
+        badge.layer?.shadowRadius = 6
+        badge.layer?.shadowOpacity = 1
         container.addSubview(badge)
 
         let letter = NSTextField(labelWithString: btn)
-        letter.font = NSFont.systemFont(ofSize: 11, weight: .bold)
+        letter.font = NSFont.systemFont(ofSize: 13, weight: .heavy)
         letter.textColor = .white
         letter.alignment = .center
         letter.sizeToFit()
@@ -198,10 +207,10 @@ final class OverlayPanel: NSPanel {
         container.addSubview(letter)
 
         let psLabel = NSTextField(labelWithString: ps)
-        psLabel.font = NSFont.systemFont(ofSize: 13, weight: .medium)
-        psLabel.textColor = NSColor.white.withAlphaComponent(0.35)
+        psLabel.font = NSFont.systemFont(ofSize: 14, weight: .medium)
+        psLabel.textColor = NSColor.white.withAlphaComponent(0.45)
         psLabel.sizeToFit()
-        psLabel.frame.origin = NSPoint(x: badgeSize + 3, y: (badgeSize - psLabel.frame.height) / 2)
+        psLabel.frame.origin = NSPoint(x: badgeSize + 4, y: (badgeSize - psLabel.frame.height) / 2)
         container.addSubview(psLabel)
 
         return container
@@ -229,16 +238,16 @@ final class OverlayPanel: NSPanel {
                 "X": .systemBlue, "Y": .systemYellow,
             ]
             let promptsDict = Dictionary(uniqueKeysWithValues: prompts.map { ($0.button, $0.prompt) })
-            let font = NSFont.systemFont(ofSize: 12, weight: .medium)
+            let font = NSFont.systemFont(ofSize: 13, weight: .medium)
 
-            let outerPad: CGFloat = 20
-            let titleH: CGFloat = 22
-            let titleGap: CGFloat = 8
-            let badgeSize: CGFloat = 26
-            let step: CGFloat = 30
-            let cardGap: CGFloat = 10
-            let sideCardMaxW: CGFloat = 180
-            let tbCardMaxW: CGFloat = 240
+            let outerPad: CGFloat = 24
+            let titleH: CGFloat = 24
+            let titleGap: CGFloat = 10
+            let badgeSize: CGFloat = 30
+            let step: CGFloat = 34
+            let cardGap: CGFloat = 12
+            let sideCardMaxW: CGFloat = 200
+            let tbCardMaxW: CGFloat = 260
 
             // Measure all 4 cards
             let cardY = makeCard(text: promptsDict["Y"] ?? "", color: buttonColors["Y"]!, font: font, maxWidth: tbCardMaxW)
@@ -247,7 +256,7 @@ final class OverlayPanel: NSPanel {
             let cardB = makeCard(text: promptsDict["B"] ?? "", color: buttonColors["B"]!, font: font, maxWidth: sideCardMaxW)
 
             // Diamond area size
-            let diamondW = step * 2 + badgeSize + 18  // +18 for PS5 labels
+            let diamondW = step * 2 + badgeSize + 20  // +20 for PS5 labels
             let diamondH = step * 2 + badgeSize
 
             // Panel dimensions
@@ -263,8 +272,8 @@ final class OverlayPanel: NSPanel {
 
             // ── Title ──
             let titleField = NSTextField(labelWithString: "⚡ \(label) Quick Prompts")
-            titleField.font = NSFont.systemFont(ofSize: 13, weight: .semibold)
-            titleField.textColor = NSColor.white.withAlphaComponent(0.55)
+            titleField.font = NSFont.systemFont(ofSize: 14, weight: .semibold)
+            titleField.textColor = NSColor.white.withAlphaComponent(0.7)
             titleField.frame = NSRect(x: outerPad, y: panelHeight - outerPad - titleH, width: panelWidth - outerPad * 2, height: titleH)
             promptSheetContainer.addSubview(titleField)
 
@@ -307,7 +316,7 @@ final class OverlayPanel: NSPanel {
 
             // B card: to the right of diamond, vertically centered
             cardB.view.frame.origin = NSPoint(
-                x: cx + step + badgeSize / 2 + 18 + cardGap,
+                x: cx + step + badgeSize / 2 + 20 + cardGap,
                 y: cy - cardB.size.height / 2
             )
             promptSheetContainer.addSubview(cardB.view)
@@ -337,13 +346,13 @@ final class OverlayPanel: NSPanel {
             promptSheetContainer.subviews.forEach { $0.removeFromSuperview() }
             promptSheetContainer.isHidden = false
 
-            let font = NSFont.systemFont(ofSize: 12, weight: .medium)
-            let panelWidth: CGFloat = 420
-            let pad: CGFloat = 20
-            let titleH: CGFloat = 22
-            let inputAreaH: CGFloat = 50
-            let comboRowH: CGFloat = 24
-            let sectionGap: CGFloat = 12
+            let font = NSFont.systemFont(ofSize: 14, weight: .medium)
+            let panelWidth: CGFloat = 520
+            let pad: CGFloat = 24
+            let titleH: CGFloat = 26
+            let inputAreaH: CGFloat = 54
+            let comboRowH: CGFloat = 30
+            let sectionGap: CGFloat = 14
 
             // Filter to combos that still match the current input prefix
             let matching: [ComboEntry]
@@ -359,7 +368,7 @@ final class OverlayPanel: NSPanel {
             // ── Title ──
             let styleName = style == .fighting ? "🥊 Command Mode — Fighting" : "🎮 Command Mode — Helldivers"
             let titleField = NSTextField(labelWithString: styleName)
-            titleField.font = NSFont.systemFont(ofSize: 13, weight: .semibold)
+            titleField.font = NSFont.systemFont(ofSize: 15, weight: .semibold)
             titleField.textColor = NSColor.systemOrange
             titleField.frame = NSRect(x: pad, y: totalHeight - pad - titleH, width: panelWidth - pad * 2, height: titleH)
             promptSheetContainer.addSubview(titleField)
@@ -423,24 +432,24 @@ final class OverlayPanel: NSPanel {
 
                 // Combo name
                 let nameField = NSTextField(labelWithString: combo.name)
-                nameField.font = NSFont.systemFont(ofSize: 11, weight: .semibold)
-                nameField.textColor = NSColor.systemOrange.withAlphaComponent(0.7)
-                nameField.frame = NSRect(x: pad, y: rowY, width: 80, height: comboRowH)
+                nameField.font = NSFont.systemFont(ofSize: 13, weight: .semibold)
+                nameField.textColor = NSColor.systemOrange.withAlphaComponent(0.85)
+                nameField.frame = NSRect(x: pad, y: rowY, width: 110, height: comboRowH)
                 promptSheetContainer.addSubview(nameField)
 
                 // Input sequence
                 let seqField = NSTextField(labelWithString: combo.inputDisplay)
-                seqField.font = font
-                seqField.textColor = NSColor.white.withAlphaComponent(0.5)
-                seqField.frame = NSRect(x: pad + 80, y: rowY, width: 120, height: comboRowH)
+                seqField.font = NSFont.monospacedSystemFont(ofSize: 14, weight: .medium)
+                seqField.textColor = NSColor.white.withAlphaComponent(0.6)
+                seqField.frame = NSRect(x: pad + 110, y: rowY, width: 140, height: comboRowH)
                 promptSheetContainer.addSubview(seqField)
 
                 // Prompt
                 let promptField = NSTextField(labelWithString: combo.prompt)
                 promptField.font = font
-                promptField.textColor = NSColor.white.withAlphaComponent(0.8)
+                promptField.textColor = NSColor.white.withAlphaComponent(0.9)
                 promptField.lineBreakMode = .byTruncatingTail
-                promptField.frame = NSRect(x: pad + 200, y: rowY, width: panelWidth - pad - 200 - pad, height: comboRowH)
+                promptField.frame = NSRect(x: pad + 250, y: rowY, width: panelWidth - pad - 250 - pad, height: comboRowH)
                 promptSheetContainer.addSubview(promptField)
             }
 

@@ -1358,11 +1358,33 @@ private final class ComboInputEditor: NSObject {
         self.inputs = inputs
         self.isFighting = isFighting
 
-        // Sheet window
-        let w: CGFloat = isFighting ? 340 : 260
-        let h: CGFloat = 260
+        // Layout constants
+        let bs: CGFloat = 50       // button size
+        let gap: CGFloat = 6       // gap between buttons
+        let pad: CGFloat = 20      // outer padding
+        let seqH: CGFloat = 40     // sequence display height
+        let barH: CGFloat = 32     // bottom bar height
+        let secGap: CGFloat = 14   // gap between sections
+
+        // D-pad cross: 3 wide × 2 tall
+        let dpadW = bs * 3 + gap * 2  // 162
+
+        // Face buttons Xbox diamond: 3 tall × 3 wide (fighting only)
+        // faceW = 3*bs + 2*gap = 162, faceH = 3*bs + 2*gap = 162
+        let btnAreaH: CGFloat = isFighting
+            ? bs * 3 + gap * 2   // 162 — diamond needs 3 rows
+            : bs * 2 + gap       // 106 — D-pad only needs 2 rows
+
+        // Window size — minimum width must fit the bottom bar (⌫ + Clear + Cancel + Save)
+        let barMinW = pad + 40 + 6 + 50 + 20 + 70 + 6 + 64 + pad  // 296
+        let w: CGFloat = isFighting
+            ? pad + dpadW + pad + dpadW + pad    // 384
+            : pad + dpadW + pad                  // 202
+        let winW = max(w, barMinW)
+        let winH = pad + seqH + secGap + btnAreaH + secGap + barH + pad
+
         sheetWindow = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: w, height: h),
+            contentRect: NSRect(x: 0, y: 0, width: winW, height: winH),
             styleMask: [.titled],
             backing: .buffered,
             defer: false
@@ -1370,33 +1392,37 @@ private final class ComboInputEditor: NSObject {
         sheetWindow.title = "Edit: \(name)"
         sheetWindow.backgroundColor = surgeWindowColor
 
-        let content = NSView(frame: NSRect(x: 0, y: 0, width: w, height: h))
+        let content = NSView(frame: NSRect(x: 0, y: 0, width: winW, height: winH))
         content.wantsLayer = true
         sheetWindow.contentView = content
 
-        // Current sequence display
+        // Current sequence display (top)
         sequenceLabel = NSTextField(labelWithString: "")
         sequenceLabel.font = NSFont.monospacedSystemFont(ofSize: 18, weight: .medium)
         sequenceLabel.textColor = .white
         sequenceLabel.alignment = .center
         sequenceLabel.lineBreakMode = .byTruncatingHead
-        sequenceLabel.frame = NSRect(x: 20, y: h - 50, width: w - 40, height: 30)
+        sequenceLabel.frame = NSRect(x: pad, y: winH - pad - seqH, width: winW - pad * 2, height: seqH)
         content.addSubview(sequenceLabel)
 
         super.init()
         updateDisplay()
 
-        // D-pad buttons in cross layout
-        let dpadOriginX: CGFloat = 20.0
-        let dpadOriginY: CGFloat = 70.0
-        let bs: CGFloat = 50
-        let gap: CGFloat = 4
+        // Button area origin (bottom of button region)
+        let btnAreaBottom = pad + barH + secGap
+        let dpadH = bs * 2 + gap  // 106
+        let dpadX = pad
+        // Vertically center D-pad within button area
+        let dpadY = btnAreaBottom + (btnAreaH - dpadH) / 2
 
+        // D-pad cross layout:
+        //      [↑]
+        // [←] [↓] [→]
         let dpadButtons: [(ComboInput, CGFloat, CGFloat)] = [
-            (.up,    dpadOriginX + bs + gap, dpadOriginY + bs + gap),    // top
-            (.left,  dpadOriginX,            dpadOriginY),               // left
-            (.down,  dpadOriginX + bs + gap, dpadOriginY),               // center-bottom
-            (.right, dpadOriginX + (bs + gap) * 2, dpadOriginY),         // right
+            (.up,    dpadX + bs + gap,         dpadY + bs + gap),  // top center
+            (.left,  dpadX,                    dpadY),             // bottom left
+            (.down,  dpadX + bs + gap,         dpadY),             // bottom center
+            (.right, dpadX + (bs + gap) * 2,   dpadY),             // bottom right
         ]
 
         for (input, bx, by) in dpadButtons {
@@ -1408,15 +1434,19 @@ private final class ComboInputEditor: NSObject {
             content.addSubview(btn)
         }
 
-        // Face buttons (fighting style only) — diamond layout
+        // Face buttons (fighting style only) — Xbox diamond layout:
+        //      [Y]
+        //  [X]     [B]
+        //      [A]
         if isFighting {
-            let faceOriginX: CGFloat = w - 20 - bs * 3 - gap * 2
-            let faceOriginY: CGFloat = 70.0
+            let faceX = pad + dpadW + pad
+            let faceY = btnAreaBottom
+
             let faceButtons: [(ComboInput, CGFloat, CGFloat)] = [
-                (.y, faceOriginX + bs + gap, faceOriginY + bs + gap),      // top
-                (.x, faceOriginX,            faceOriginY),                 // left
-                (.a, faceOriginX + (bs + gap) * 2, faceOriginY),           // right
-                (.b, faceOriginX + bs + gap, faceOriginY - bs - gap),      // bottom
+                (.y, faceX + bs + gap,         faceY + (bs + gap) * 2), // top
+                (.x, faceX,                    faceY + bs + gap),       // left
+                (.b, faceX + (bs + gap) * 2,   faceY + bs + gap),       // right
+                (.a, faceX + bs + gap,         faceY),                  // bottom
             ]
 
             for (input, bx, by) in faceButtons {
@@ -1429,33 +1459,32 @@ private final class ComboInputEditor: NSObject {
             }
         }
 
-        // Bottom bar: Backspace, Clear, Cancel, Save
-        let barY: CGFloat = 14
-        let smallBtn: CGFloat = 24
+        // Bottom bar: ⌫, Clear, Cancel, Save
+        let barY: CGFloat = pad
 
         let backBtn = NSButton(title: "⌫", target: self, action: #selector(backspace))
         backBtn.bezelStyle = .recessed
         backBtn.font = NSFont.systemFont(ofSize: 14)
-        backBtn.frame = NSRect(x: 20, y: barY, width: 40, height: smallBtn)
+        backBtn.frame = NSRect(x: pad, y: barY, width: 40, height: barH)
         content.addSubview(backBtn)
 
         let clearBtn = NSButton(title: "Clear", target: self, action: #selector(clearAll))
         clearBtn.bezelStyle = .recessed
         clearBtn.font = NSFont.systemFont(ofSize: 11)
-        clearBtn.frame = NSRect(x: 66, y: barY, width: 50, height: smallBtn)
+        clearBtn.frame = NSRect(x: pad + 46, y: barY, width: 50, height: barH)
         content.addSubview(clearBtn)
 
         let cancelBtn = NSButton(title: "Cancel", target: self, action: #selector(cancel))
         cancelBtn.bezelStyle = .rounded
         cancelBtn.font = NSFont.systemFont(ofSize: 12)
-        cancelBtn.frame = NSRect(x: w - 160, y: barY - 2, width: 70, height: 28)
+        cancelBtn.frame = NSRect(x: winW - 160, y: barY, width: 70, height: barH)
         cancelBtn.keyEquivalent = "\u{1b}" // Escape
         content.addSubview(cancelBtn)
 
         let saveBtn = NSButton(title: "Save", target: self, action: #selector(save))
         saveBtn.bezelStyle = .rounded
         saveBtn.font = NSFont.systemFont(ofSize: 12, weight: .semibold)
-        saveBtn.frame = NSRect(x: w - 84, y: barY - 2, width: 64, height: 28)
+        saveBtn.frame = NSRect(x: winW - 84, y: barY, width: 64, height: barH)
         saveBtn.keyEquivalent = "\r"
         saveBtn.contentTintColor = .white
         saveBtn.bezelColor = .systemBlue
