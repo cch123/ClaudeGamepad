@@ -487,12 +487,12 @@ final class GamepadManager {
             llmRefiner.refine(text) { [weak self] refined in
                 DispatchQueue.main.async {
                     self?.lastPartialText = refined
-                    self?.overlay.showMessage("🎤 \(refined)  [A=确认 B=取消]", duration: 30)
+                    self?.overlay.showMessage("🎤 \(refined)  [A=Confirm B=Cancel]", duration: 30)
                 }
             }
         } else {
             lastPartialText = text
-            overlay.showMessage("🎤 \(text)  [A=确认 B=取消]", duration: 30)
+            overlay.showMessage("🎤 \(text)  [A=Confirm B=Cancel]", duration: 30)
         }
     }
 
@@ -500,7 +500,7 @@ final class GamepadManager {
         // System speech (SFSpeechRecognizer) - has partial results
         systemSpeech.onPartialResult = { [weak self] text in
             self?.lastPartialText = text
-            self?.overlay.showMessage("🎤 \(text)  [A=确认 B=取消]", duration: 30)
+            self?.overlay.showMessage("🎤 \(text)  [A=Confirm B=Cancel]", duration: 30)
         }
 
         systemSpeech.onFinalResult = { [weak self] text in

@@ -786,7 +786,7 @@ final class SettingsWindow: NSWindowController, NSTextViewDelegate {
                 let warnLabel = NSTextField(labelWithString: "⚠️")
                 warnLabel.font = NSFont.systemFont(ofSize: 11)
                 warnLabel.frame = NSRect(x: cardInset + 94, y: rowY + 6, width: 20, height: 24)
-                warnLabel.toolTip = "前缀冲突: \(conflicts.joined(separator: ", "))\n短 combo 会优先触发，长 combo 永远无法到达"
+                warnLabel.toolTip = "Prefix conflict: \(conflicts.joined(separator: ", "))\nShorter combo fires first, longer combo can never be reached"
                 comboTableContainer.addSubview(warnLabel)
             }
 

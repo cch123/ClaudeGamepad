@@ -374,7 +374,7 @@ final class OverlayPanel: NSPanel {
             promptSheetContainer.addSubview(inputBg)
 
             if inputs.isEmpty {
-                let hint = NSTextField(labelWithString: style == .helldivers ? "输入方向键组合..." : "输入方向键 + 按键组合...")
+                let hint = NSTextField(labelWithString: style == .helldivers ? "Input D-pad combo..." : "Input D-pad + button combo...")
                 hint.font = NSFont.systemFont(ofSize: 16, weight: .medium)
                 hint.textColor = NSColor.white.withAlphaComponent(0.3)
                 hint.sizeToFit()
@@ -624,8 +624,8 @@ final class OverlayPanel: NSPanel {
     private func normalizedHint(_ hint: String?) -> String? {
         guard let hint, !hint.isEmpty else { return nil }
         return hint
-            .replacingOccurrences(of: "A=确认", with: "A 确认")
-            .replacingOccurrences(of: "B=取消", with: "B 取消")
+            .replacingOccurrences(of: "A=Confirm", with: "A Confirm")
+            .replacingOccurrences(of: "B=Cancel", with: "B Cancel")
     }
 
     private func positionOnScreen() {

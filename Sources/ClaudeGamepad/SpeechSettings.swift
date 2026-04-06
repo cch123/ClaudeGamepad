@@ -2,8 +2,8 @@ import Foundation
 
 /// Which speech recognition engine to use.
 enum SpeechEngineType: String, Codable, CaseIterable {
-    case system = "System (系统语音识别)"
-    case whisperLocal = "Whisper (本地 whisper.cpp)"
+    case system = "System"
+    case whisperLocal = "Whisper (local whisper.cpp)"
 }
 
 /// Persistent settings for speech recognition and LLM refinement.

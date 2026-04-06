@@ -2,21 +2,21 @@ import Foundation
 
 /// Actions that can be assigned to a button.
 enum ButtonAction: String, Codable, CaseIterable {
-    case enter = "Enter (确认)"
-    case ctrlC = "Ctrl+C (中断)"
+    case enter = "Enter"
+    case ctrlC = "Ctrl+C"
     case accept = "Accept (y+Enter)"
     case reject = "Reject (n+Enter)"
-    case tab = "Tab (补全)"
+    case tab = "Tab"
     case escape = "Escape"
-    case voiceInput = "Voice Input (语音输入)"
-    case presetMenu = "Preset Menu (预设菜单)"
+    case voiceInput = "Voice Input"
+    case presetMenu = "Preset Menu"
     case clear = "/clear"
     case arrowUp = "Arrow Up (↑)"
     case arrowDown = "Arrow Down (↓)"
     case arrowLeft = "Arrow Left (←)"
     case arrowRight = "Arrow Right (→)"
-    case quit = "Quit (退出)"
-    case none = "None (无)"
+    case quit = "Quit"
+    case none = "None"
 }
 
 /// Controller style preference for UI labels.
@@ -105,8 +105,8 @@ enum ComboInput: String, Codable, CaseIterable {
 
 /// Command combo input style.
 enum ComboStyle: String, Codable, CaseIterable {
-    case fighting = "Fighting Game (格斗游戏)"
-    case helldivers = "Helldivers 2 (绝地潜兵)"
+    case fighting = "Fighting Game"
+    case helldivers = "Helldivers 2"
 }
 
 /// A command combo: a sequence of inputs that triggers a prompt.
