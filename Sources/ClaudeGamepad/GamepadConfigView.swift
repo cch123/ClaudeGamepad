@@ -39,6 +39,7 @@ final class GamepadConfigView: NSView {
             ButtonSlot(key: "dpadRight", actionKey: "dpadRight", title: "D-pad Right", group: "nav", trailingText: nil),
             ButtonSlot(key: "start", actionKey: "start", title: l.start, group: "system", trailingText: nil),
             ButtonSlot(key: "select", actionKey: "select", title: l.select, group: "system", trailingText: nil),
+            ButtonSlot(key: "guide", actionKey: nil, title: l.guide, group: "system", trailingText: nil),
             ButtonSlot(key: "stickL", actionKey: "stickClick", title: l.stickClick, group: "system", trailingText: nil),
         ]
     }
@@ -65,8 +66,8 @@ final class GamepadConfigView: NSView {
             ),
             GroupDescriptor(
                 title: "System & Sticks",
-                subtitle: "Menu buttons and stick press action",
-                slotKeys: ["start", "select", "stickL"],
+                subtitle: "Menu buttons, guide key, and stick press",
+                slotKeys: ["start", "select", "guide", "stickL"],
                 footer: "L3 and R3 share the same runtime action."
             ),
         ]
@@ -76,12 +77,18 @@ final class GamepadConfigView: NSView {
     private var popupByActionKey: [String: NSPopUpButton] = [:]
     private var groupCards: [MappingGroupCardView] = []
 
+    // Guide button key combo state
+    private var guideModifierPopup: NSPopUpButton!
+    private var guideKeyPopup: NSPopUpButton!
+    private(set) var guideKeyCombo: KeyCombo
+
     override var isFlipped: Bool { true }
 
     init(frame: NSRect, mapping: ButtonMapping) {
         let l = mapping.labels
         self.slots = Self.makeSlots(l)
         self.groups = Self.makeGroups(l)
+        self.guideKeyCombo = mapping.guideKeyCombo
         super.init(frame: frame)
         wantsLayer = true
         layer?.backgroundColor = .clear
@@ -144,6 +151,11 @@ final class GamepadConfigView: NSView {
     }
 
     private func buildRow(for slot: ButtonSlot) -> MappingActionRowView {
+        // Guide button: use key combo editor (modifier + key popups)
+        if slot.key == "guide" {
+            return buildGuideRow(title: slot.title)
+        }
+
         if let actionKey = slot.actionKey {
             let popup = NSPopUpButton(frame: .zero, pullsDown: false)
             popup.font = NSFont.systemFont(ofSize: 12)
@@ -159,6 +171,76 @@ final class GamepadConfigView: NSView {
         }
 
         return MappingActionRowView(title: slot.title, detail: slot.trailingText ?? "")
+    }
+
+    private func buildGuideRow(title: String) -> MappingActionRowView {
+        let modifierNames = ["None", "⌘ Cmd", "⌃ Ctrl", "⌥ Opt", "⇧ Shift",
+                             "⌘⇧", "⌃⇧", "⌘⌥", "⌃⌥"]
+
+        guideModifierPopup = NSPopUpButton(frame: .zero, pullsDown: false)
+        guideModifierPopup.font = NSFont.systemFont(ofSize: 11)
+        for name in modifierNames {
+            guideModifierPopup.addItem(withTitle: name)
+        }
+        guideModifierPopup.selectItem(withTitle: modifierDisplayName(for: guideKeyCombo))
+
+        guideKeyPopup = NSPopUpButton(frame: .zero, pullsDown: false)
+        guideKeyPopup.font = NSFont.systemFont(ofSize: 11)
+        guideKeyPopup.addItem(withTitle: "—")
+        for key in KeyCombo.allKeys {
+            guideKeyPopup.addItem(withTitle: key)
+        }
+        if guideKeyCombo.isEmpty {
+            guideKeyPopup.selectItem(withTitle: "—")
+        } else {
+            guideKeyPopup.selectItem(withTitle: guideKeyCombo.key.uppercased())
+        }
+
+        guideModifierPopup.target = self
+        guideModifierPopup.action = #selector(guideComboChanged)
+        guideKeyPopup.target = self
+        guideKeyPopup.action = #selector(guideComboChanged)
+
+        return MappingActionRowView(title: title, leftPopup: guideModifierPopup, rightPopup: guideKeyPopup)
+    }
+
+    @objc private func guideComboChanged() {
+        let modTitle = guideModifierPopup.titleOfSelectedItem ?? "None"
+        let keyTitle = guideKeyPopup.titleOfSelectedItem ?? "—"
+
+        if keyTitle == "—" {
+            guideKeyCombo = .empty
+            return
+        }
+
+        var combo = KeyCombo(key: keyTitle)
+        switch modTitle {
+        case "⌘ Cmd":   combo.command = true
+        case "⌃ Ctrl":  combo.control = true
+        case "⌥ Opt":   combo.option = true
+        case "⇧ Shift": combo.shift = true
+        case "⌘⇧":      combo.command = true; combo.shift = true
+        case "⌃⇧":      combo.control = true; combo.shift = true
+        case "⌘⌥":      combo.command = true; combo.option = true
+        case "⌃⌥":      combo.control = true; combo.option = true
+        default: break
+        }
+        guideKeyCombo = combo
+    }
+
+    private func modifierDisplayName(for combo: KeyCombo) -> String {
+        if combo.isEmpty { return "None" }
+        switch (combo.command, combo.control, combo.option, combo.shift) {
+        case (true, false, false, false): return "⌘ Cmd"
+        case (false, true, false, false): return "⌃ Ctrl"
+        case (false, false, true, false): return "⌥ Opt"
+        case (false, false, false, true): return "⇧ Shift"
+        case (true, false, false, true):  return "⌘⇧"
+        case (false, true, false, true):  return "⌃⇧"
+        case (true, false, true, false):  return "⌘⌥"
+        case (false, true, true, false):  return "⌃⌥"
+        default: return "None"
+        }
     }
 
     @objc private func actionPopupChanged(_ sender: NSPopUpButton) {
@@ -246,11 +328,13 @@ private final class MappingActionRowView: NSView {
     private let titleLabel = NSTextField(labelWithString: "")
     private let detailLabel = NSTextField(labelWithString: "")
     private let popup: NSPopUpButton?
+    private let rightPopup: NSPopUpButton?
 
     override var isFlipped: Bool { true }
 
     init(title: String, popup: NSPopUpButton) {
         self.popup = popup
+        self.rightPopup = nil
         super.init(frame: .zero)
         commonInit(title: title)
         addSubview(popup)
@@ -258,10 +342,21 @@ private final class MappingActionRowView: NSView {
 
     init(title: String, detail: String) {
         self.popup = nil
+        self.rightPopup = nil
         super.init(frame: .zero)
         commonInit(title: title)
         detailLabel.stringValue = detail
         addSubview(detailLabel)
+    }
+
+    /// Dual popup row: modifier popup + key popup side by side.
+    init(title: String, leftPopup: NSPopUpButton, rightPopup: NSPopUpButton) {
+        self.popup = leftPopup
+        self.rightPopup = rightPopup
+        super.init(frame: .zero)
+        commonInit(title: title)
+        addSubview(leftPopup)
+        addSubview(rightPopup)
     }
 
     required init?(coder: NSCoder) { fatalError() }
@@ -285,7 +380,16 @@ private final class MappingActionRowView: NSView {
         super.layout()
 
         titleLabel.frame = NSRect(x: 14, y: 7, width: 160, height: 18)
-        if let popup {
+        if let rightPopup, let popup {
+            // Dual popup: modifier on left, key on right
+            let totalW: CGFloat = 172
+            let gap: CGFloat = 4
+            let modW = totalW * 0.55
+            let keyW = totalW - modW - gap
+            let startX = bounds.width - totalW - 14
+            popup.frame = NSRect(x: startX, y: 3, width: modW, height: 26)
+            rightPopup.frame = NSRect(x: startX + modW + gap, y: 3, width: keyW, height: 26)
+        } else if let popup {
             popup.frame = NSRect(x: bounds.width - 186, y: 3, width: 172, height: 26)
         } else {
             detailLabel.frame = NSRect(x: bounds.width - 150, y: 8, width: 136, height: 16)

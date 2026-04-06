@@ -105,6 +105,11 @@ final class GamepadManager {
             if pressed { self?.onSelect() }
         }
 
+        // Guide / Home / PS button
+        gamepad.buttonHome?.pressedChangedHandler = { [weak self] _, _, pressed in
+            if pressed { self?.onGuide() }
+        }
+
         // Stick clicks
         gamepad.leftThumbstickButton?.pressedChangedHandler = { [weak self] _, _, pressed in
             if pressed { self?.onStickClick() }
@@ -344,6 +349,13 @@ final class GamepadManager {
             return
         }
         executeAction(mapping.buttonActions.select)
+    }
+
+    private func onGuide() {
+        let combo = mapping.guideKeyCombo
+        guard !combo.isEmpty else { return }
+        overlay.showMessage("🎮 \(combo.displayString)")
+        keys.pressCombo(combo)
     }
 
     private func onStickClick() {

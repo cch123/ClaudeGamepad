@@ -40,6 +40,12 @@ final class KeySimulator {
         pressKey(KeySimulator.kVK_ANSI_C, flags: .maskControl)
     }
 
+    /// Press an arbitrary key combo (modifier keys + key).
+    func pressCombo(_ combo: KeyCombo) {
+        guard let code = combo.keyCode else { return }
+        pressKey(code, flags: combo.cgEventFlags)
+    }
+
     /// Press Tab.
     func pressTab() {
         pressKey(KeySimulator.kVK_Tab)

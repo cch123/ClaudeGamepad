@@ -1322,6 +1322,7 @@ final class SettingsWindow: NSWindowController, NSTextViewDelegate {
             dpadLeft: gamepadView.actionForSlot("dpadLeft"),
             dpadRight: gamepadView.actionForSlot("dpadRight")
         )
+        mapping.guideKeyCombo = gamepadView.guideKeyCombo
         mapping.presetPrompts = mapping.allPrompts
         mapping.ltPrompts = ButtonMapping.QuickPrompts(
             a: promptValues["lt.a"] ?? mapping.ltPrompts.a,
