@@ -10,6 +10,7 @@ private let surgeDividerColor = NSColor(red: 1, green: 1, blue: 1, alpha: 0.06)
 /// status-first cards, and a focused editor for the current item.
 final class SettingsWindow: NSWindowController, NSTextViewDelegate {
     private enum SettingsSection: CaseIterable {
+        case general
         case buttons
         case prompts
         case combos
@@ -17,6 +18,7 @@ final class SettingsWindow: NSWindowController, NSTextViewDelegate {
 
         var title: String {
             switch self {
+            case .general: return "General"
             case .buttons: return "Button Mapping"
             case .prompts: return "Preset Prompts"
             case .combos: return "Command Combos"
@@ -26,12 +28,14 @@ final class SettingsWindow: NSWindowController, NSTextViewDelegate {
 
         var subtitle: String {
             switch self {
+            case .general:
+                return "Controller style and general preferences."
             case .buttons:
                 return "Review the controller layout and keep high-frequency actions easy to scan."
             case .prompts:
                 return "Edit trigger combos from one focused workspace instead of juggling dropdowns."
             case .combos:
-                return "Configure L2+R2 command mode: combo style and input sequences."
+                return "Configure command mode: combo style and input sequences."
             case .speech:
                 return "See the whole voice pipeline at a glance: engine, model, install state, and LLM cleanup."
             }
@@ -39,6 +43,7 @@ final class SettingsWindow: NSWindowController, NSTextViewDelegate {
 
         var symbolName: String {
             switch self {
+            case .general: return "gearshape"
             case .buttons: return "gamecontroller"
             case .prompts: return "text.bubble"
             case .combos: return "bolt.circle"
@@ -56,72 +61,27 @@ final class SettingsWindow: NSWindowController, NSTextViewDelegate {
         let currentValue: (ButtonMapping) -> String
     }
 
-    private let promptSlots: [PromptSlotDescriptor] = [
-        PromptSlotDescriptor(
-            id: "lt.a",
-            title: "LT + A / L2 + ×",
-            subtitle: "Left trigger quick action",
-            promptKey: "a",
-            color: NSColor(red: 0.30, green: 0.78, blue: 0.35, alpha: 1),
-            currentValue: { $0.ltPrompts.a }
-        ),
-        PromptSlotDescriptor(
-            id: "lt.b",
-            title: "LT + B / L2 + ○",
-            subtitle: "Left trigger quick action",
-            promptKey: "b",
-            color: NSColor(red: 0.90, green: 0.28, blue: 0.28, alpha: 1),
-            currentValue: { $0.ltPrompts.b }
-        ),
-        PromptSlotDescriptor(
-            id: "lt.x",
-            title: "LT + X / L2 + □",
-            subtitle: "Left trigger quick action",
-            promptKey: "x",
-            color: NSColor(red: 0.30, green: 0.52, blue: 0.95, alpha: 1),
-            currentValue: { $0.ltPrompts.x }
-        ),
-        PromptSlotDescriptor(
-            id: "lt.y",
-            title: "LT + Y / L2 + △",
-            subtitle: "Left trigger quick action",
-            promptKey: "y",
-            color: NSColor(red: 0.95, green: 0.78, blue: 0.20, alpha: 1),
-            currentValue: { $0.ltPrompts.y }
-        ),
-        PromptSlotDescriptor(
-            id: "rt.a",
-            title: "RT + A / R2 + ×",
-            subtitle: "Right trigger quick action",
-            promptKey: "a",
-            color: NSColor(red: 0.30, green: 0.78, blue: 0.35, alpha: 1),
-            currentValue: { $0.rtPrompts.a }
-        ),
-        PromptSlotDescriptor(
-            id: "rt.b",
-            title: "RT + B / R2 + ○",
-            subtitle: "Right trigger quick action",
-            promptKey: "b",
-            color: NSColor(red: 0.90, green: 0.28, blue: 0.28, alpha: 1),
-            currentValue: { $0.rtPrompts.b }
-        ),
-        PromptSlotDescriptor(
-            id: "rt.x",
-            title: "RT + X / R2 + □",
-            subtitle: "Right trigger quick action",
-            promptKey: "x",
-            color: NSColor(red: 0.30, green: 0.52, blue: 0.95, alpha: 1),
-            currentValue: { $0.rtPrompts.x }
-        ),
-        PromptSlotDescriptor(
-            id: "rt.y",
-            title: "RT + Y / R2 + △",
-            subtitle: "Right trigger quick action",
-            promptKey: "y",
-            color: NSColor(red: 0.95, green: 0.78, blue: 0.20, alpha: 1),
-            currentValue: { $0.rtPrompts.y }
-        ),
-    ]
+    private var promptSlots: [PromptSlotDescriptor] {
+        let l = mapping.labels
+        return [
+            PromptSlotDescriptor(id: "lt.a", title: "\(l.lt) + \(l.a)", subtitle: "Left trigger quick action",
+                                 promptKey: "a", color: l.colorA, currentValue: { $0.ltPrompts.a }),
+            PromptSlotDescriptor(id: "lt.b", title: "\(l.lt) + \(l.b)", subtitle: "Left trigger quick action",
+                                 promptKey: "b", color: l.colorB, currentValue: { $0.ltPrompts.b }),
+            PromptSlotDescriptor(id: "lt.x", title: "\(l.lt) + \(l.x)", subtitle: "Left trigger quick action",
+                                 promptKey: "x", color: l.colorX, currentValue: { $0.ltPrompts.x }),
+            PromptSlotDescriptor(id: "lt.y", title: "\(l.lt) + \(l.y)", subtitle: "Left trigger quick action",
+                                 promptKey: "y", color: l.colorY, currentValue: { $0.ltPrompts.y }),
+            PromptSlotDescriptor(id: "rt.a", title: "\(l.rt) + \(l.a)", subtitle: "Right trigger quick action",
+                                 promptKey: "a", color: l.colorA, currentValue: { $0.rtPrompts.a }),
+            PromptSlotDescriptor(id: "rt.b", title: "\(l.rt) + \(l.b)", subtitle: "Right trigger quick action",
+                                 promptKey: "b", color: l.colorB, currentValue: { $0.rtPrompts.b }),
+            PromptSlotDescriptor(id: "rt.x", title: "\(l.rt) + \(l.x)", subtitle: "Right trigger quick action",
+                                 promptKey: "x", color: l.colorX, currentValue: { $0.rtPrompts.x }),
+            PromptSlotDescriptor(id: "rt.y", title: "\(l.rt) + \(l.y)", subtitle: "Right trigger quick action",
+                                 promptKey: "y", color: l.colorY, currentValue: { $0.rtPrompts.y }),
+        ]
+    }
 
     private var mapping = ButtonMapping.load()
     private var speechSettings = SpeechSettings.load()
@@ -296,6 +256,8 @@ final class SettingsWindow: NSWindowController, NSTextViewDelegate {
 
     private func badgeLabel(for section: SettingsSection) -> String {
         switch section {
+        case .general:
+            return mapping.controllerStyle == .xbox ? "Xbox" : "PS5"
         case .buttons:
             return "\(gamepadActionCount()) mapped actions"
         case .prompts:
@@ -309,6 +271,8 @@ final class SettingsWindow: NSWindowController, NSTextViewDelegate {
 
     private func buildSectionView(_ section: SettingsSection) -> NSView {
         switch section {
+        case .general:
+            return buildGeneralTab()
         case .buttons:
             return buildButtonMappingTab()
         case .prompts:
@@ -318,6 +282,60 @@ final class SettingsWindow: NSWindowController, NSTextViewDelegate {
         case .speech:
             return buildSpeechTab()
         }
+    }
+
+    // MARK: - General
+
+    private var controllerStylePopup: NSPopUpButton!
+
+    private func buildGeneralTab() -> NSView {
+        let page = FlippedView(frame: contentContainer.bounds)
+        page.autoresizingMask = [.width, .height]
+
+        let bodyY = addPageHeader(
+            to: page,
+            title: SettingsSection.general.title,
+            subtitle: SettingsSection.general.subtitle
+        )
+
+        // Controller Style card
+        let card = SurfaceCardView(frame: NSRect(x: pageInset, y: bodyY, width: page.bounds.width - pageInset * 2, height: 80))
+        card.autoresizingMask = [.width]
+        page.addSubview(card)
+
+        let styleLabel = NSTextField(labelWithString: "Controller Style")
+        styleLabel.font = NSFont.systemFont(ofSize: 14, weight: .semibold)
+        styleLabel.textColor = .white
+        styleLabel.frame = NSRect(x: cardInset, y: 14, width: 160, height: 20)
+        card.addSubview(styleLabel)
+
+        let styleHint = NSTextField(labelWithString: "Changes button labels and colors across all UI and overlays.")
+        styleHint.font = NSFont.systemFont(ofSize: 11)
+        styleHint.textColor = NSColor.white.withAlphaComponent(0.5)
+        styleHint.frame = NSRect(x: cardInset, y: 38, width: 400, height: 16)
+        card.addSubview(styleHint)
+
+        controllerStylePopup = NSPopUpButton(frame: NSRect(x: card.bounds.width - 180, y: 22, width: 160, height: 28))
+        controllerStylePopup.autoresizingMask = [.minXMargin]
+        for style in ControllerStyle.allCases {
+            controllerStylePopup.addItem(withTitle: style.rawValue)
+        }
+        controllerStylePopup.selectItem(withTitle: mapping.controllerStyle.rawValue)
+        controllerStylePopup.target = self
+        controllerStylePopup.action = #selector(controllerStyleChanged(_:))
+        card.addSubview(controllerStylePopup)
+
+        return page
+    }
+
+    @objc private func controllerStyleChanged(_ sender: NSPopUpButton) {
+        guard let title = sender.selectedItem?.title,
+              let style = ControllerStyle.allCases.first(where: { $0.rawValue == title }) else { return }
+        mapping.controllerStyle = style
+        mapping.save()
+        // Clear cached section views so they rebuild with new labels
+        sectionViews.removeAll()
+        selectSection(currentSection)
     }
 
     // MARK: - Button Mapping
@@ -373,7 +391,8 @@ final class SettingsWindow: NSWindowController, NSTextViewDelegate {
         listTitle.frame = NSRect(x: cardInset, y: 18, width: 140, height: 18)
         splitCard.addSubview(listTitle)
 
-        let listSubtitle = NSTextField(labelWithString: "LT / RT and L2 / R2 modifier combinations")
+        let l = mapping.labels
+        let listSubtitle = NSTextField(labelWithString: "\(l.lt) / \(l.rt) modifier combinations")
         listSubtitle.font = NSFont.systemFont(ofSize: 11)
         listSubtitle.textColor = NSColor.white.withAlphaComponent(0.58)
         listSubtitle.frame = NSRect(x: cardInset, y: 38, width: 180, height: 14)
@@ -647,7 +666,8 @@ final class SettingsWindow: NSWindowController, NSTextViewDelegate {
         page.addSubview(header)
         y += 28
 
-        let subtitle = NSTextField(labelWithString: "Hold L2+R2 to activate Command Mode. Input combos with D-pad (+ face buttons for Fighting style).")
+        let cl = mapping.labels
+        let subtitle = NSTextField(labelWithString: "Hold \(cl.lt)+\(cl.rt) to activate Command Mode. Input combos with D-pad (+ face buttons for Fighting style).")
         subtitle.font = NSFont.systemFont(ofSize: 12)
         subtitle.textColor = NSColor.white.withAlphaComponent(0.5)
         subtitle.frame = NSRect(x: pageInset, y: y, width: 600, height: 18)
@@ -771,7 +791,8 @@ final class SettingsWindow: NSWindowController, NSTextViewDelegate {
             }
 
             // Input sequence display
-            let seqField = NSTextField(labelWithString: combo.inputDisplay)
+            let seqDisplay = combo.inputs.map { $0.displayLabel(mapping.labels) }.joined(separator: " ")
+            let seqField = NSTextField(labelWithString: seqDisplay)
             seqField.font = NSFont.monospacedSystemFont(ofSize: 12, weight: .medium)
             seqField.textColor = hasConflict ? NSColor.systemYellow.withAlphaComponent(0.7) : NSColor.white.withAlphaComponent(0.7)
             seqField.frame = NSRect(x: cardInset + 110, y: rowY + 6, width: 160, height: 24)
@@ -850,7 +871,8 @@ final class SettingsWindow: NSWindowController, NSTextViewDelegate {
         let editor = ComboInputEditor(
             inputs: mapping.combos[i].inputs,
             name: mapping.combos[i].name,
-            isFighting: mapping.comboStyle == .fighting
+            isFighting: mapping.comboStyle == .fighting,
+            labels: mapping.labels
         )
         guard let window = sender.window else { return }
         window.beginSheet(editor.window!) { response in
@@ -1351,12 +1373,14 @@ private final class ComboInputEditor: NSObject {
     private let sheetWindow: NSWindow
     private let sequenceLabel: NSTextField
     private let isFighting: Bool
+    private let labels: ControllerLabels
 
     var window: NSWindow? { sheetWindow }
 
-    init(inputs: [ComboInput], name: String, isFighting: Bool) {
+    init(inputs: [ComboInput], name: String, isFighting: Bool, labels: ControllerLabels) {
         self.inputs = inputs
         self.isFighting = isFighting
+        self.labels = labels
 
         // Layout constants
         let bs: CGFloat = 50       // button size
@@ -1450,7 +1474,7 @@ private final class ComboInputEditor: NSObject {
             ]
 
             for (input, bx, by) in faceButtons {
-                let btn = makeInputButton(input.rawValue, size: bs)
+                let btn = makeInputButton(input.displayLabel(labels), size: bs)
                 btn.frame.origin = NSPoint(x: bx, y: by)
                 btn.tag = ComboInput.allCases.firstIndex(of: input)!
                 btn.target = self
@@ -1507,7 +1531,7 @@ private final class ComboInputEditor: NSObject {
             sequenceLabel.stringValue = "(empty)"
             sequenceLabel.textColor = NSColor.white.withAlphaComponent(0.3)
         } else {
-            sequenceLabel.stringValue = inputs.map(\.rawValue).joined(separator: "  ")
+            sequenceLabel.stringValue = inputs.map { $0.displayLabel(labels) }.joined(separator: "  ")
             sequenceLabel.textColor = .white
         }
     }

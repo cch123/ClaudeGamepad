@@ -176,9 +176,9 @@ final class OverlayPanel: NSPanel {
         return (card, NSSize(width: cardW, height: cardH))
     }
 
-    /// Add a diamond badge with centered letter + PS5 symbol.
-    private func makeBadge(btn: String, ps: String, color: NSColor, badgeSize: CGFloat) -> NSView {
-        let container = NSView(frame: NSRect(x: 0, y: 0, width: badgeSize + 20, height: badgeSize))
+    /// Add a circular badge with centered button label.
+    private func makeBadge(btn: String, color: NSColor, badgeSize: CGFloat) -> NSView {
+        let container = NSView(frame: NSRect(x: 0, y: 0, width: badgeSize, height: badgeSize))
 
         let badge = NSView(frame: NSRect(x: 0, y: 0, width: badgeSize, height: badgeSize))
         badge.wantsLayer = true
@@ -206,19 +206,12 @@ final class OverlayPanel: NSPanel {
         )
         container.addSubview(letter)
 
-        let psLabel = NSTextField(labelWithString: ps)
-        psLabel.font = NSFont.systemFont(ofSize: 14, weight: .medium)
-        psLabel.textColor = NSColor.white.withAlphaComponent(0.45)
-        psLabel.sizeToFit()
-        psLabel.frame.origin = NSPoint(x: badgeSize + 4, y: (badgeSize - psLabel.frame.height) / 2)
-        container.addSubview(psLabel)
-
         return container
     }
 
     /// Show a prompt cheat sheet for trigger combos (LT/RT + face buttons).
     /// Radial layout: diamond in center, prompts around it on cards.
-    func showPromptSheet(label: String, prompts: [(button: String, prompt: String)]) {
+    func showPromptSheet(label: String, labels: ControllerLabels, prompts: [(button: String, prompt: String)]) {
         DispatchQueue.main.async { [self] in
             hideTimer?.invalidate()
 
@@ -232,10 +225,9 @@ final class OverlayPanel: NSPanel {
             promptSheetContainer.subviews.forEach { $0.removeFromSuperview() }
             promptSheetContainer.isHidden = false
 
-            let psLabels: [String: String] = ["A": "✕", "B": "○", "X": "□", "Y": "△"]
             let buttonColors: [String: NSColor] = [
-                "A": .systemGreen, "B": .systemRed,
-                "X": .systemBlue, "Y": .systemYellow,
+                "a": labels.colorA, "b": labels.colorB,
+                "x": labels.colorX, "y": labels.colorY,
             ]
             let promptsDict = Dictionary(uniqueKeysWithValues: prompts.map { ($0.button, $0.prompt) })
             let font = NSFont.systemFont(ofSize: 13, weight: .medium)
@@ -250,13 +242,13 @@ final class OverlayPanel: NSPanel {
             let tbCardMaxW: CGFloat = 260
 
             // Measure all 4 cards
-            let cardY = makeCard(text: promptsDict["Y"] ?? "", color: buttonColors["Y"]!, font: font, maxWidth: tbCardMaxW)
-            let cardA = makeCard(text: promptsDict["A"] ?? "", color: buttonColors["A"]!, font: font, maxWidth: tbCardMaxW)
-            let cardX = makeCard(text: promptsDict["X"] ?? "", color: buttonColors["X"]!, font: font, maxWidth: sideCardMaxW)
-            let cardB = makeCard(text: promptsDict["B"] ?? "", color: buttonColors["B"]!, font: font, maxWidth: sideCardMaxW)
+            let cardY = makeCard(text: promptsDict["y"] ?? "", color: buttonColors["y"]!, font: font, maxWidth: tbCardMaxW)
+            let cardA = makeCard(text: promptsDict["a"] ?? "", color: buttonColors["a"]!, font: font, maxWidth: tbCardMaxW)
+            let cardX = makeCard(text: promptsDict["x"] ?? "", color: buttonColors["x"]!, font: font, maxWidth: sideCardMaxW)
+            let cardB = makeCard(text: promptsDict["b"] ?? "", color: buttonColors["b"]!, font: font, maxWidth: sideCardMaxW)
 
             // Diamond area size
-            let diamondW = step * 2 + badgeSize + 20  // +20 for PS5 labels
+            let diamondW = step * 2 + badgeSize
             let diamondH = step * 2 + badgeSize
 
             // Panel dimensions
@@ -279,15 +271,15 @@ final class OverlayPanel: NSPanel {
 
             // ── Diamond badges ──
             let badges: [(String, CGFloat, CGFloat)] = [
-                ("Y", cx, cy + step),
-                ("A", cx, cy - step),
-                ("X", cx - step, cy),
-                ("B", cx + step, cy),
+                ("y", cx, cy + step),
+                ("a", cx, cy - step),
+                ("x", cx - step, cy),
+                ("b", cx + step, cy),
             ]
-            for (btn, bx, by) in badges {
-                let color = buttonColors[btn]!
-                let ps = psLabels[btn]!
-                let badgeView = makeBadge(btn: btn, ps: ps, color: color, badgeSize: badgeSize)
+            for (key, bx, by) in badges {
+                let color = buttonColors[key]!
+                let displayLabel = labels.face(key)
+                let badgeView = makeBadge(btn: displayLabel, color: color, badgeSize: badgeSize)
                 badgeView.frame.origin = NSPoint(x: bx - badgeSize / 2, y: by - badgeSize / 2)
                 promptSheetContainer.addSubview(badgeView)
             }
@@ -316,7 +308,7 @@ final class OverlayPanel: NSPanel {
 
             // B card: to the right of diamond, vertically centered
             cardB.view.frame.origin = NSPoint(
-                x: cx + step + badgeSize / 2 + 20 + cardGap,
+                x: cx + step + badgeSize / 2 + cardGap,
                 y: cy - cardB.size.height / 2
             )
             promptSheetContainer.addSubview(cardB.view)
@@ -332,7 +324,7 @@ final class OverlayPanel: NSPanel {
     }
 
     /// Show command mode overlay with input sequence and available combos.
-    func showCommandMode(inputs: [ComboInput], combos: [ComboEntry], style: ComboStyle) {
+    func showCommandMode(inputs: [ComboInput], combos: [ComboEntry], style: ComboStyle, labels: ControllerLabels) {
         DispatchQueue.main.async { [self] in
             hideTimer?.invalidate()
 
@@ -391,7 +383,7 @@ final class OverlayPanel: NSPanel {
             } else {
                 let inputColors: [ComboInput: NSColor] = [
                     .up: .white, .down: .white, .left: .white, .right: .white,
-                    .a: .systemGreen, .b: .systemRed, .x: .systemBlue, .y: .systemYellow,
+                    .a: labels.colorA, .b: labels.colorB, .x: labels.colorX, .y: labels.colorY,
                 ]
                 let symbolSize: CGFloat = 30
                 let gap: CGFloat = 8
@@ -408,7 +400,7 @@ final class OverlayPanel: NSPanel {
                     symbol.layer?.backgroundColor = (isDirection ? NSColor.white.withAlphaComponent(0.15) : color.withAlphaComponent(0.85)).cgColor
                     promptSheetContainer.addSubview(symbol)
 
-                    let label = NSTextField(labelWithString: input.rawValue)
+                    let label = NSTextField(labelWithString: input.displayLabel(labels))
                     label.font = NSFont.systemFont(ofSize: isDirection ? 16 : 13, weight: .bold)
                     label.textColor = .white
                     label.alignment = .center
@@ -438,7 +430,8 @@ final class OverlayPanel: NSPanel {
                 promptSheetContainer.addSubview(nameField)
 
                 // Input sequence
-                let seqField = NSTextField(labelWithString: combo.inputDisplay)
+                let seqDisplay = combo.inputs.map { $0.displayLabel(labels) }.joined(separator: " ")
+                let seqField = NSTextField(labelWithString: seqDisplay)
                 seqField.font = NSFont.monospacedSystemFont(ofSize: 14, weight: .medium)
                 seqField.textColor = NSColor.white.withAlphaComponent(0.6)
                 seqField.frame = NSRect(x: pad + 110, y: rowY, width: 140, height: comboRowH)
@@ -464,12 +457,13 @@ final class OverlayPanel: NSPanel {
     }
 
     /// Show transcription result.
-    func showTranscription(_ text: String) {
+    func showTranscription(_ text: String, labels: ControllerLabels? = nil) {
+        let l = labels ?? ControllerLabels(style: .xbox)
         present(
             kind: .transcription,
             title: "Transcription Ready",
             body: text,
-            hint: "Press A to paste, or B to cancel.",
+            hint: "Press \(l.a) to paste, or \(l.b) to cancel.",
             symbolName: "quote.bubble",
             accentColor: NSColor.controlAccentColor,
             duration: 6.0

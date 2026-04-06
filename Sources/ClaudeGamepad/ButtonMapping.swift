@@ -19,6 +19,64 @@ enum ButtonAction: String, Codable, CaseIterable {
     case none = "None (无)"
 }
 
+/// Controller style preference for UI labels.
+enum ControllerStyle: String, Codable, CaseIterable {
+    case xbox = "Xbox"
+    case ps5 = "PS5"
+}
+
+/// Centralized controller button labels and colors based on style preference.
+struct ControllerLabels {
+    let style: ControllerStyle
+
+    // Face buttons
+    var a: String { style == .xbox ? "A" : "✕" }
+    var b: String { style == .xbox ? "B" : "○" }
+    var x: String { style == .xbox ? "X" : "□" }
+    var y: String { style == .xbox ? "Y" : "△" }
+
+    // Triggers & bumpers
+    var lt: String { style == .xbox ? "LT" : "L2" }
+    var rt: String { style == .xbox ? "RT" : "R2" }
+    var lb: String { style == .xbox ? "LB" : "L1" }
+    var rb: String { style == .xbox ? "RB" : "R1" }
+
+    // System
+    var start: String { style == .xbox ? "Menu" : "Options" }
+    var select: String { style == .xbox ? "View" : "Create" }
+    var stickClick: String { style == .xbox ? "L3 / R3" : "L3 / R3" }
+
+    // Face button colors — Xbox and PS5 use different color schemes
+    var colorA: NSColor { style == .xbox ? .systemGreen : NSColor(red: 0.35, green: 0.55, blue: 0.90, alpha: 1) }
+    var colorB: NSColor { style == .xbox ? .systemRed   : .systemRed }
+    var colorX: NSColor { style == .xbox ? .systemBlue  : NSColor(red: 0.80, green: 0.45, blue: 0.70, alpha: 1) }
+    var colorY: NSColor { style == .xbox ? .systemYellow : NSColor(red: 0.30, green: 0.75, blue: 0.55, alpha: 1) }
+
+    /// Face button label for a key ("a", "b", "x", "y").
+    func face(_ key: String) -> String {
+        switch key {
+        case "a": return a
+        case "b": return b
+        case "x": return x
+        case "y": return y
+        default: return key.uppercased()
+        }
+    }
+
+    /// Face button color for a key.
+    func faceColor(_ key: String) -> NSColor {
+        switch key {
+        case "a": return colorA
+        case "b": return colorB
+        case "x": return colorX
+        case "y": return colorY
+        default: return .white
+        }
+    }
+}
+
+import AppKit
+
 /// Input element for command combos.
 enum ComboInput: String, Codable, CaseIterable {
     case up = "↑"
@@ -29,6 +87,20 @@ enum ComboInput: String, Codable, CaseIterable {
     case b = "B"
     case x = "X"
     case y = "Y"
+
+    /// Display label respecting controller style.
+    func displayLabel(_ labels: ControllerLabels) -> String {
+        switch self {
+        case .up: return "↑"
+        case .down: return "↓"
+        case .left: return "←"
+        case .right: return "→"
+        case .a: return labels.a
+        case .b: return labels.b
+        case .x: return labels.x
+        case .y: return labels.y
+        }
+    }
 }
 
 /// Command combo input style.
@@ -164,9 +236,17 @@ struct ButtonMapping: Codable {
             y: "refactor this to be cleaner"
         ),
         buttonActions: .default,
+        controllerStyle: .xbox,
         comboStyle: .helldivers,
         combos: defaultCombos
     )
+
+    // MARK: - Controller Style
+
+    var controllerStyle: ControllerStyle
+
+    /// Convenience accessor for labels based on current style.
+    var labels: ControllerLabels { ControllerLabels(style: controllerStyle) }
 
     // MARK: - Command Combos
 
@@ -180,6 +260,33 @@ struct ButtonMapping: Codable {
         let dir = appSupport.appendingPathComponent("ClaudeGamepad")
         try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
         return dir.appendingPathComponent("config.json")
+    }
+
+    init(categories: [PresetCategory], presetPrompts: [String],
+         ltPrompts: QuickPrompts, rtPrompts: QuickPrompts,
+         buttonActions: ButtonActions, controllerStyle: ControllerStyle,
+         comboStyle: ComboStyle, combos: [ComboEntry]) {
+        self.categories = categories
+        self.presetPrompts = presetPrompts
+        self.ltPrompts = ltPrompts
+        self.rtPrompts = rtPrompts
+        self.buttonActions = buttonActions
+        self.controllerStyle = controllerStyle
+        self.comboStyle = comboStyle
+        self.combos = combos
+    }
+
+    /// Custom decoder to handle backward compatibility when new fields are added.
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        categories = try container.decode([PresetCategory].self, forKey: .categories)
+        presetPrompts = try container.decode([String].self, forKey: .presetPrompts)
+        ltPrompts = try container.decode(QuickPrompts.self, forKey: .ltPrompts)
+        rtPrompts = try container.decode(QuickPrompts.self, forKey: .rtPrompts)
+        buttonActions = try container.decode(ButtonActions.self, forKey: .buttonActions)
+        controllerStyle = try container.decodeIfPresent(ControllerStyle.self, forKey: .controllerStyle) ?? .xbox
+        comboStyle = try container.decode(ComboStyle.self, forKey: .comboStyle)
+        combos = try container.decode([ComboEntry].self, forKey: .combos)
     }
 
     static func load() -> ButtonMapping {

@@ -20,51 +20,57 @@ final class GamepadConfigView: NSView {
         let footer: String?
     }
 
-    private let slots: [ButtonSlot] = [
-        ButtonSlot(key: "lt", actionKey: nil, title: "LT / L2", group: "shoulders", trailingText: "Preset Prompts"),
-        ButtonSlot(key: "rt", actionKey: nil, title: "RT / R2", group: "shoulders", trailingText: "Preset Prompts"),
-        ButtonSlot(key: "lb", actionKey: "lb", title: "LB / L1", group: "shoulders", trailingText: nil),
-        ButtonSlot(key: "rb", actionKey: "rb", title: "RB / R1", group: "shoulders", trailingText: nil),
-        ButtonSlot(key: "a", actionKey: "a", title: "A / ×", group: "face", trailingText: nil),
-        ButtonSlot(key: "b", actionKey: "b", title: "B / ○", group: "face", trailingText: nil),
-        ButtonSlot(key: "x", actionKey: "x", title: "X / □", group: "face", trailingText: nil),
-        ButtonSlot(key: "y", actionKey: "y", title: "Y / △", group: "face", trailingText: nil),
-        ButtonSlot(key: "dpadUp", actionKey: "dpadUp", title: "D-pad Up", group: "nav", trailingText: nil),
-        ButtonSlot(key: "dpadDown", actionKey: "dpadDown", title: "D-pad Down", group: "nav", trailingText: nil),
-        ButtonSlot(key: "dpadLeft", actionKey: "dpadLeft", title: "D-pad Left", group: "nav", trailingText: nil),
-        ButtonSlot(key: "dpadRight", actionKey: "dpadRight", title: "D-pad Right", group: "nav", trailingText: nil),
-        ButtonSlot(key: "start", actionKey: "start", title: "Start / Menu", group: "system", trailingText: nil),
-        ButtonSlot(key: "select", actionKey: "select", title: "Select / View", group: "system", trailingText: nil),
-        ButtonSlot(key: "stickL", actionKey: "stickClick", title: "L3 / R3 Press", group: "system", trailingText: nil),
-        ButtonSlot(key: "stickR", actionKey: "stickClick", title: "L3 / R3 Press", group: "system", trailingText: nil),
-    ]
+    private let slots: [ButtonSlot]
+    private let groups: [GroupDescriptor]
 
-    private let groups: [GroupDescriptor] = [
-        GroupDescriptor(
-            title: "Shoulders",
-            subtitle: "LT / L2 and RT / R2 modifiers, plus LB / L1 and RB / R1 actions",
-            slotKeys: ["lt", "rt", "lb", "rb"],
-            footer: "LT / L2 and RT / R2 stay managed in Preset Prompts."
-        ),
-        GroupDescriptor(
-            title: "Face Buttons",
-            subtitle: "Primary action buttons",
-            slotKeys: ["a", "b", "x", "y"],
-            footer: nil
-        ),
-        GroupDescriptor(
-            title: "Navigation",
-            subtitle: "Directional controls",
-            slotKeys: ["dpadUp", "dpadDown", "dpadLeft", "dpadRight"],
-            footer: nil
-        ),
-        GroupDescriptor(
-            title: "System & Sticks",
-            subtitle: "Menu buttons and stick press action",
-            slotKeys: ["start", "select", "stickL"],
-            footer: "L3 and R3 share the same runtime action."
-        ),
-    ]
+    private static func makeSlots(_ l: ControllerLabels) -> [ButtonSlot] {
+        [
+            ButtonSlot(key: "lt", actionKey: nil, title: l.lt, group: "shoulders", trailingText: "Preset Prompts"),
+            ButtonSlot(key: "rt", actionKey: nil, title: l.rt, group: "shoulders", trailingText: "Preset Prompts"),
+            ButtonSlot(key: "lb", actionKey: "lb", title: l.lb, group: "shoulders", trailingText: nil),
+            ButtonSlot(key: "rb", actionKey: "rb", title: l.rb, group: "shoulders", trailingText: nil),
+            ButtonSlot(key: "a", actionKey: "a", title: l.a, group: "face", trailingText: nil),
+            ButtonSlot(key: "b", actionKey: "b", title: l.b, group: "face", trailingText: nil),
+            ButtonSlot(key: "x", actionKey: "x", title: l.x, group: "face", trailingText: nil),
+            ButtonSlot(key: "y", actionKey: "y", title: l.y, group: "face", trailingText: nil),
+            ButtonSlot(key: "dpadUp", actionKey: "dpadUp", title: "D-pad Up", group: "nav", trailingText: nil),
+            ButtonSlot(key: "dpadDown", actionKey: "dpadDown", title: "D-pad Down", group: "nav", trailingText: nil),
+            ButtonSlot(key: "dpadLeft", actionKey: "dpadLeft", title: "D-pad Left", group: "nav", trailingText: nil),
+            ButtonSlot(key: "dpadRight", actionKey: "dpadRight", title: "D-pad Right", group: "nav", trailingText: nil),
+            ButtonSlot(key: "start", actionKey: "start", title: l.start, group: "system", trailingText: nil),
+            ButtonSlot(key: "select", actionKey: "select", title: l.select, group: "system", trailingText: nil),
+            ButtonSlot(key: "stickL", actionKey: "stickClick", title: l.stickClick, group: "system", trailingText: nil),
+        ]
+    }
+
+    private static func makeGroups(_ l: ControllerLabels) -> [GroupDescriptor] {
+        [
+            GroupDescriptor(
+                title: "Shoulders",
+                subtitle: "\(l.lt) / \(l.rt) modifiers, plus \(l.lb) / \(l.rb) actions",
+                slotKeys: ["lt", "rt", "lb", "rb"],
+                footer: "\(l.lt) / \(l.rt) stay managed in Preset Prompts."
+            ),
+            GroupDescriptor(
+                title: "Face Buttons",
+                subtitle: "Primary action buttons",
+                slotKeys: ["a", "b", "x", "y"],
+                footer: nil
+            ),
+            GroupDescriptor(
+                title: "Navigation",
+                subtitle: "Directional controls",
+                slotKeys: ["dpadUp", "dpadDown", "dpadLeft", "dpadRight"],
+                footer: nil
+            ),
+            GroupDescriptor(
+                title: "System & Sticks",
+                subtitle: "Menu buttons and stick press action",
+                slotKeys: ["start", "select", "stickL"],
+                footer: "L3 and R3 share the same runtime action."
+            ),
+        ]
+    }
 
     private var slotActions: [String: ButtonAction] = [:]
     private var popupByActionKey: [String: NSPopUpButton] = [:]
@@ -73,6 +79,9 @@ final class GamepadConfigView: NSView {
     override var isFlipped: Bool { true }
 
     init(frame: NSRect, mapping: ButtonMapping) {
+        let l = mapping.labels
+        self.slots = Self.makeSlots(l)
+        self.groups = Self.makeGroups(l)
         super.init(frame: frame)
         wantsLayer = true
         layer?.backgroundColor = .clear

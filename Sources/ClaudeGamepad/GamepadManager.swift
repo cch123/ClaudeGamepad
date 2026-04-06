@@ -162,12 +162,13 @@ final class GamepadManager {
         if !isInCommandMode {
             if held && (isLT ? !wasLT : !wasRT) && !bothNow {
                 let prompts = isLT ? mapping.ltPrompts : mapping.rtPrompts
-                let label = isLT ? "LT" : "RT"
-                overlay.showPromptSheet(label: label, prompts: [
-                    ("A", prompts.a),
-                    ("B", prompts.b),
-                    ("X", prompts.x),
-                    ("Y", prompts.y),
+                let labels = mapping.labels
+                let triggerLabel = isLT ? labels.lt : labels.rt
+                overlay.showPromptSheet(label: triggerLabel, labels: labels, prompts: [
+                    ("a", prompts.a),
+                    ("b", prompts.b),
+                    ("x", prompts.x),
+                    ("y", prompts.y),
                 ])
             }
 
@@ -395,7 +396,7 @@ final class GamepadManager {
         isInCommandMode = true
         comboBuffer = []
         comboTimer?.invalidate()
-        overlay.showCommandMode(inputs: [], combos: activeCombos, style: mapping.comboStyle)
+        overlay.showCommandMode(inputs: [], combos: activeCombos, style: mapping.comboStyle, labels: mapping.labels)
     }
 
     private func exitCommandMode() {
@@ -436,7 +437,7 @@ final class GamepadManager {
         }
 
         if hasPartial {
-            overlay.showCommandMode(inputs: comboBuffer, combos: activeCombos, style: mapping.comboStyle)
+            overlay.showCommandMode(inputs: comboBuffer, combos: activeCombos, style: mapping.comboStyle, labels: mapping.labels)
             // Reset timeout
             comboTimer = Timer.scheduledTimer(withTimeInterval: 3.0, repeats: false) { [weak self] _ in
                 self?.overlay.showMessage("⚠️ Combo timed out")
@@ -448,7 +449,7 @@ final class GamepadManager {
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
                 guard let self, self.isInCommandMode else { return }
                 self.comboBuffer = []
-                self.overlay.showCommandMode(inputs: [], combos: self.activeCombos, style: self.mapping.comboStyle)
+                self.overlay.showCommandMode(inputs: [], combos: self.activeCombos, style: self.mapping.comboStyle, labels: self.mapping.labels)
             }
         }
     }
