@@ -185,6 +185,10 @@ final class KeySimulator {
 
     private func postKeyToDirectionalTarget(_ keyCode: CGKeyCode) -> Bool {
         guard let pid = activeDirectionalTargetPID() else { return false }
+        guard shouldContinueUsingDirectionalTarget(pid) else {
+            clearDirectionalTarget()
+            return false
+        }
         guard activateDirectionalTarget(pid) else {
             clearDirectionalTarget()
             return false
@@ -194,6 +198,13 @@ final class KeySimulator {
         guard postLegacyKeyboardEvent(keyCode) else { return false }
         setDirectionalTarget(pid: pid, lifetime: 3.0)
         return true
+    }
+
+    private func shouldContinueUsingDirectionalTarget(_ pid: pid_t) -> Bool {
+        guard let frontmostPID = NSWorkspace.shared.frontmostApplication?.processIdentifier else {
+            return true
+        }
+        return frontmostPID == pid
     }
 
     private func postLegacyKeyboardEvent(_ keyCode: CGKeyCode) -> Bool {
