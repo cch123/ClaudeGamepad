@@ -155,6 +155,19 @@ final class GamepadManager {
         // Leaving command mode: one trigger released
         if !bothNow && bothBefore && isInCommandMode {
             exitCommandMode()
+            // If the other trigger is still held, show its cheat sheet
+            if ltHeld || rtHeld {
+                let useLeft = ltHeld
+                let prompts = useLeft ? mapping.ltPrompts : mapping.rtPrompts
+                let labels = mapping.labels
+                let triggerLabel = useLeft ? labels.lt : labels.rt
+                overlay.showPromptSheet(label: triggerLabel, labels: labels, prompts: [
+                    ("a", prompts.a),
+                    ("b", prompts.b),
+                    ("x", prompts.x),
+                    ("y", prompts.y),
+                ])
+            }
             return
         }
 

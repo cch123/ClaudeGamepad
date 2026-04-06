@@ -476,7 +476,10 @@ final class OverlayPanel: NSPanel {
                 context.duration = 0.24
                 self.animator().alphaValue = 0
             }) {
-                self.orderOut(nil)
+                // Only dismiss if still faded — a new show may have reset alphaValue to 1
+                if self.alphaValue < 0.1 {
+                    self.orderOut(nil)
+                }
                 self.alphaValue = 1.0
             }
         }
