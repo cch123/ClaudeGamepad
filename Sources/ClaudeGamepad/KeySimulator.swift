@@ -78,6 +78,14 @@ final class KeySimulator {
         process.waitUntilExit()
     }
 
+    /// Press a sequence of key combos with a short delay between each.
+    func pressComboSequence(_ combos: [KeyCombo]) {
+        for (i, combo) in combos.enumerated() {
+            if i > 0 { Thread.sleep(forTimeInterval: 0.05) }
+            pressCombo(combo)
+        }
+    }
+
     /// After a combo opens an overlay window, direct arrow keys to the topmost app.
     func armDirectionalTargetCapture(delay: TimeInterval = 0.18, lifetime: TimeInterval = 3.0) {
         clearDirectionalTarget()

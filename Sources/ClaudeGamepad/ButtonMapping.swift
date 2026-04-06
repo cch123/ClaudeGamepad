@@ -300,15 +300,16 @@ struct ButtonMapping: Codable {
             y: "refactor this to be cleaner"
         ),
         buttonActions: .default,
-        guideKeyCombo: KeyCombo(key: "G", command: true),
+        guideKeyCombosMap: ["start": [KeyCombo(key: "G", command: true)]],
         controllerStyle: .xbox,
         comboStyle: .helldivers,
         combos: defaultCombos
     )
 
-    // MARK: - Guide Button
+    // MARK: - Guide Button (per-button key combos)
 
-    var guideKeyCombo: KeyCombo
+    /// Map from button action key (e.g. "start", "select") to its combo sequence.
+    var guideKeyCombosMap: [String: [KeyCombo]]
 
     // MARK: - Controller Style
 
@@ -333,7 +334,7 @@ struct ButtonMapping: Codable {
 
     init(categories: [PresetCategory], presetPrompts: [String],
          ltPrompts: QuickPrompts, rtPrompts: QuickPrompts,
-         buttonActions: ButtonActions, guideKeyCombo: KeyCombo,
+         buttonActions: ButtonActions, guideKeyCombosMap: [String: [KeyCombo]],
          controllerStyle: ControllerStyle,
          comboStyle: ComboStyle, combos: [ComboEntry]) {
         self.categories = categories
@@ -341,10 +342,31 @@ struct ButtonMapping: Codable {
         self.ltPrompts = ltPrompts
         self.rtPrompts = rtPrompts
         self.buttonActions = buttonActions
-        self.guideKeyCombo = guideKeyCombo
+        self.guideKeyCombosMap = guideKeyCombosMap
         self.controllerStyle = controllerStyle
         self.comboStyle = comboStyle
         self.combos = combos
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case categories, presetPrompts, ltPrompts, rtPrompts, buttonActions
+        case guideKeyCombosMap       // new per-button map
+        case guideKeyCombos          // legacy array key
+        case guideKeyCombo           // legacy single-value key
+        case controllerStyle, comboStyle, combos
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(categories, forKey: .categories)
+        try container.encode(presetPrompts, forKey: .presetPrompts)
+        try container.encode(ltPrompts, forKey: .ltPrompts)
+        try container.encode(rtPrompts, forKey: .rtPrompts)
+        try container.encode(buttonActions, forKey: .buttonActions)
+        try container.encode(guideKeyCombosMap, forKey: .guideKeyCombosMap)
+        try container.encode(controllerStyle, forKey: .controllerStyle)
+        try container.encode(comboStyle, forKey: .comboStyle)
+        try container.encode(combos, forKey: .combos)
     }
 
     /// Custom decoder to handle backward compatibility when new fields are added.
@@ -355,7 +377,16 @@ struct ButtonMapping: Codable {
         ltPrompts = try container.decode(QuickPrompts.self, forKey: .ltPrompts)
         rtPrompts = try container.decode(QuickPrompts.self, forKey: .rtPrompts)
         buttonActions = try container.decode(ButtonActions.self, forKey: .buttonActions)
-        guideKeyCombo = try container.decodeIfPresent(KeyCombo.self, forKey: .guideKeyCombo) ?? KeyCombo(key: "G", command: true)
+        // Backward compat: try per-button map first, then legacy array/single
+        if let map = try container.decodeIfPresent([String: [KeyCombo]].self, forKey: .guideKeyCombosMap) {
+            guideKeyCombosMap = map
+        } else if let combos = try container.decodeIfPresent([KeyCombo].self, forKey: .guideKeyCombos) {
+            guideKeyCombosMap = ["start": combos]
+        } else if let single = try container.decodeIfPresent(KeyCombo.self, forKey: .guideKeyCombo) {
+            guideKeyCombosMap = ["start": [single]]
+        } else {
+            guideKeyCombosMap = ["start": [KeyCombo(key: "G", command: true)]]
+        }
         controllerStyle = try container.decodeIfPresent(ControllerStyle.self, forKey: .controllerStyle) ?? .xbox
         comboStyle = try container.decode(ComboStyle.self, forKey: .comboStyle)
         combos = try container.decode([ComboEntry].self, forKey: .combos)

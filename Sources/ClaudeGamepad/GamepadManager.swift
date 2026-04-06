@@ -214,7 +214,7 @@ final class GamepadManager {
     // MARK: - Button Actions
 
     /// Execute a configured button action.
-    private func executeAction(_ action: ButtonAction) {
+    private func executeAction(_ action: ButtonAction, buttonKey: String = "") {
         switch action {
         case .enter:
             overlay.showMessage("⏎ Enter")
@@ -254,7 +254,7 @@ final class GamepadManager {
         case .arrowLeft:  keys.pressArrow(.left)
         case .arrowRight: keys.pressArrow(.right)
         case .guideCombo:
-            onGuide()
+            onGuide(buttonKey: buttonKey)
         case .quit:
             overlay.showMessage("👋 Bye!")
             DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
@@ -347,15 +347,15 @@ final class GamepadManager {
     }
 
     private func onLB() {
-        executeAction(mapping.buttonActions.lb)
+        executeAction(mapping.buttonActions.lb, buttonKey: "lb")
     }
 
     private func onRB() {
-        executeAction(mapping.buttonActions.rb)
+        executeAction(mapping.buttonActions.rb, buttonKey: "rb")
     }
 
     private func onStart() {
-        executeAction(mapping.buttonActions.start)
+        executeAction(mapping.buttonActions.start, buttonKey: "start")
     }
 
     private func onSelect() {
@@ -364,19 +364,26 @@ final class GamepadManager {
             executeAction(.quit)
             return
         }
-        executeAction(mapping.buttonActions.select)
+        executeAction(mapping.buttonActions.select, buttonKey: "select")
     }
 
-    private func onGuide() {
-        let combo = mapping.guideKeyCombo
-        guard !combo.isEmpty else { return }
-        overlay.showMessage("🎮 \(combo.displayString)")
-        keys.pressCombo(combo)
-        keys.armDirectionalTargetCapture()
+    private func onGuide(buttonKey: String) {
+        let combos = (mapping.guideKeyCombosMap[buttonKey] ?? []).filter { !$0.isEmpty }
+        guard !combos.isEmpty else { return }
+        let display = combos.map(\.displayString).joined(separator: " ")
+        overlay.showMessage("🎮 \(display)")
+        keys.pressComboSequence(combos)
+        // Only capture focus for ⌘G (opens overlay that needs arrow navigation)
+        let isCmdG = combos.count == 1
+            && combos[0].key.uppercased() == "G"
+            && combos[0].command && !combos[0].control && !combos[0].option && !combos[0].shift
+        if isCmdG {
+            keys.armDirectionalTargetCapture()
+        }
     }
 
     private func onStickClick() {
-        executeAction(mapping.buttonActions.stickClick)
+        executeAction(mapping.buttonActions.stickClick, buttonKey: "stickClick")
     }
 
     private func onDpadPress(_ direction: ComboInput) {
@@ -401,13 +408,13 @@ final class GamepadManager {
 
         switch direction {
         case .up:
-            executeAction(mapping.buttonActions.dpadUp)
+            executeAction(mapping.buttonActions.dpadUp, buttonKey: "dpadUp")
         case .down:
-            executeAction(mapping.buttonActions.dpadDown)
+            executeAction(mapping.buttonActions.dpadDown, buttonKey: "dpadDown")
         case .left:
-            executeAction(mapping.buttonActions.dpadLeft)
+            executeAction(mapping.buttonActions.dpadLeft, buttonKey: "dpadLeft")
         case .right:
-            executeAction(mapping.buttonActions.dpadRight)
+            executeAction(mapping.buttonActions.dpadRight, buttonKey: "dpadRight")
         case .a, .b, .x, .y:
             break
         }

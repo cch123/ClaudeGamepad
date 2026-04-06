@@ -77,8 +77,8 @@ final class GamepadConfigView: NSView {
     private var rowByActionKey: [String: MappingActionRowView] = [:]
     private var groupCards: [MappingGroupCardView] = []
 
-    /// The current guide key combo — read by SettingsWindow when saving.
-    private(set) var guideKeyCombo: KeyCombo
+    /// Per-button key combos — read by SettingsWindow when saving.
+    private(set) var guideKeyCombosMap: [String: [KeyCombo]]
 
     override var isFlipped: Bool { true }
 
@@ -86,7 +86,7 @@ final class GamepadConfigView: NSView {
         let l = mapping.labels
         self.slots = Self.makeSlots(l)
         self.groups = Self.makeGroups(l)
-        self.guideKeyCombo = mapping.guideKeyCombo
+        self.guideKeyCombosMap = mapping.guideKeyCombosMap
         super.init(frame: frame)
         wantsLayer = true
         layer?.backgroundColor = .clear
@@ -162,12 +162,13 @@ final class GamepadConfigView: NSView {
             popup.identifier = NSUserInterfaceItemIdentifier(rawValue: actionKey)
             popupByActionKey[actionKey] = popup
 
+            let combosForKey = guideKeyCombosMap[actionKey] ?? [.empty]
             let row = MappingActionRowView(
                 title: slot.title,
                 popup: popup,
-                guideKeyCombo: guideKeyCombo,
-                onGuideComboChanged: { [weak self] combo in
-                    self?.guideKeyCombo = combo
+                guideKeyCombos: combosForKey,
+                onGuideComboChanged: { [weak self] combos in
+                    self?.guideKeyCombosMap[actionKey] = combos
                 }
             )
             // Show combo popups if current action is Guide Key Combo
@@ -188,19 +189,7 @@ final class GamepadConfigView: NSView {
         slotActions[actionKey] = action
 
         // Show/hide guide combo popups based on selection
-        let isGuide = action == .guideCombo
-        rowByActionKey[actionKey]?.setGuideComboVisible(isGuide)
-
-        // If another row had guide combo, hide its combo popups
-        if isGuide {
-            for (otherKey, row) in rowByActionKey where otherKey != actionKey {
-                if slotActions[otherKey] == .guideCombo {
-                    slotActions[otherKey] = .none
-                    popupByActionKey[otherKey]?.selectItem(withTitle: ButtonAction.none.rawValue)
-                    row.setGuideComboVisible(false)
-                }
-            }
-        }
+        rowByActionKey[actionKey]?.setGuideComboVisible(action == .guideCombo)
     }
 
     private func slot(for key: String) -> ButtonSlot? {
@@ -222,15 +211,21 @@ private final class MappingGroupCardView: NSView {
     private let titleLabel = NSTextField(labelWithString: "")
     private let subtitleLabel = NSTextField(labelWithString: "")
     private let footerLabel = NSTextField(labelWithString: "")
-    private let rows: [MappingActionRowView]
-    let preferredHeight: CGFloat
+    fileprivate let rows: [MappingActionRowView]
+    private let hasFooter: Bool
+
+    var preferredHeight: CGFloat {
+        let footerHeight: CGFloat = hasFooter ? 26 : 12
+        let rowsHeight = rows.reduce(CGFloat(0)) { $0 + $1.preferredHeight }
+        let gaps = CGFloat(max(rows.count - 1, 0)) * 6
+        return 50 + rowsHeight + gaps + footerHeight
+    }
 
     override var isFlipped: Bool { true }
 
     init(title: String, subtitle: String, footer: String?, rows: [MappingActionRowView]) {
         self.rows = rows
-        let footerHeight: CGFloat = footer == nil ? 12 : 26
-        self.preferredHeight = 50 + CGFloat(rows.count) * 32 + CGFloat(max(rows.count - 1, 0)) * 6 + footerHeight
+        self.hasFooter = footer != nil
         super.init(frame: .zero)
 
         wantsLayer = true
@@ -267,13 +262,94 @@ private final class MappingGroupCardView: NSView {
 
         var y: CGFloat = 50
         for row in rows {
-            row.frame = NSRect(x: 12, y: y, width: bounds.width - 24, height: 32)
-            y += 38
+            let h = row.preferredHeight
+            row.frame = NSRect(x: 12, y: y, width: bounds.width - 24, height: h)
+            y += h + 6
         }
 
         if !footerLabel.isHidden {
             footerLabel.frame = NSRect(x: 16, y: bounds.height - 24, width: bounds.width - 32, height: 14)
         }
+    }
+}
+
+/// One modifier+key pair in the combo row.
+private final class ComboKeyPairView: NSView {
+    let modifierPopup: NSPopUpButton
+    let keyPopup: NSPopUpButton
+    var onChanged: (() -> Void)?
+
+    override var isFlipped: Bool { true }
+
+    init(combo: KeyCombo) {
+        let modNames = ["None", "⌘ Cmd", "⌃ Ctrl", "⌥ Opt", "⇧ Shift",
+                         "⌘⇧", "⌃⇧", "⌘⌥", "⌃⌥"]
+        let modPopup = NSPopUpButton(frame: .zero, pullsDown: false)
+        modPopup.font = NSFont.systemFont(ofSize: 11)
+        for name in modNames { modPopup.addItem(withTitle: name) }
+        modPopup.selectItem(withTitle: Self.modifierName(for: combo))
+        self.modifierPopup = modPopup
+
+        let kPopup = NSPopUpButton(frame: .zero, pullsDown: false)
+        kPopup.font = NSFont.systemFont(ofSize: 11)
+        kPopup.addItem(withTitle: "—")
+        for key in KeyCombo.allKeys { kPopup.addItem(withTitle: key) }
+        kPopup.selectItem(withTitle: combo.isEmpty ? "—" : combo.key.uppercased())
+        self.keyPopup = kPopup
+
+        super.init(frame: .zero)
+        addSubview(modPopup)
+        addSubview(kPopup)
+        modPopup.target = self
+        modPopup.action = #selector(valueChanged)
+        kPopup.target = self
+        kPopup.action = #selector(valueChanged)
+    }
+
+    required init?(coder: NSCoder) { fatalError() }
+
+    @objc private func valueChanged() { onChanged?() }
+
+    var keyCombo: KeyCombo {
+        let modTitle = modifierPopup.titleOfSelectedItem ?? "None"
+        let keyTitle = keyPopup.titleOfSelectedItem ?? "—"
+        guard keyTitle != "—" else { return .empty }
+        var combo = KeyCombo(key: keyTitle)
+        switch modTitle {
+        case "⌘ Cmd":   combo.command = true
+        case "⌃ Ctrl":  combo.control = true
+        case "⌥ Opt":   combo.option = true
+        case "⇧ Shift": combo.shift = true
+        case "⌘⇧":      combo.command = true; combo.shift = true
+        case "⌃⇧":      combo.control = true; combo.shift = true
+        case "⌘⌥":      combo.command = true; combo.option = true
+        case "⌃⌥":      combo.control = true; combo.option = true
+        default: break
+        }
+        return combo
+    }
+
+    static func modifierName(for combo: KeyCombo) -> String {
+        if combo.isEmpty { return "None" }
+        switch (combo.command, combo.control, combo.option, combo.shift) {
+        case (true, false, false, false): return "⌘ Cmd"
+        case (false, true, false, false): return "⌃ Ctrl"
+        case (false, false, true, false): return "⌥ Opt"
+        case (false, false, false, true): return "⇧ Shift"
+        case (true, false, false, true):  return "⌘⇧"
+        case (false, true, false, true):  return "⌃⇧"
+        case (true, false, true, false):  return "⌘⌥"
+        case (false, true, true, false):  return "⌃⌥"
+        default: return "None"
+        }
+    }
+
+    override func layout() {
+        super.layout()
+        let modW = bounds.width * 0.6
+        let keyW = bounds.width - modW - 2
+        modifierPopup.frame = NSRect(x: 0, y: 0, width: modW, height: bounds.height)
+        keyPopup.frame = NSRect(x: modW + 2, y: 0, width: keyW, height: bounds.height)
     }
 }
 
@@ -283,45 +359,46 @@ private final class MappingActionRowView: NSView {
     private let popup: NSPopUpButton?
 
     // Guide key combo sub-controls (shown when action = Guide Key Combo)
-    private var modifierPopup: NSPopUpButton?
-    private var keyPopup: NSPopUpButton?
+    private var comboPairViews: [ComboKeyPairView] = []
+    private var addButton: NSButton?
+    private var removeButton: NSButton?
     private var comboVisible = false
-    private var onGuideComboChanged: ((KeyCombo) -> Void)?
+    private var onGuideComboChanged: (([KeyCombo]) -> Void)?
 
     override var isFlipped: Bool { true }
 
     /// Row with an action popup + optional guide combo sub-popups.
-    init(title: String, popup: NSPopUpButton, guideKeyCombo: KeyCombo,
-         onGuideComboChanged: @escaping (KeyCombo) -> Void) {
+    init(title: String, popup: NSPopUpButton, guideKeyCombos: [KeyCombo],
+         onGuideComboChanged: @escaping ([KeyCombo]) -> Void) {
         self.popup = popup
         self.onGuideComboChanged = onGuideComboChanged
         super.init(frame: .zero)
         commonInit(title: title)
         addSubview(popup)
 
-        // Create guide combo popups (hidden by default)
-        let modNames = ["None", "⌘ Cmd", "⌃ Ctrl", "⌥ Opt", "⇧ Shift",
-                         "⌘⇧", "⌃⇧", "⌘⌥", "⌃⌥"]
-        let modPopup = NSPopUpButton(frame: .zero, pullsDown: false)
-        modPopup.font = NSFont.systemFont(ofSize: 11)
-        for name in modNames { modPopup.addItem(withTitle: name) }
-        modPopup.selectItem(withTitle: Self.modifierName(for: guideKeyCombo))
-        modPopup.target = self
-        modPopup.action = #selector(comboChanged)
-        modPopup.isHidden = true
-        addSubview(modPopup)
-        self.modifierPopup = modPopup
+        // Build initial combo pair views
+        let combos = guideKeyCombos.isEmpty ? [KeyCombo.empty] : guideKeyCombos
+        for combo in combos {
+            appendComboPairView(for: combo)
+        }
 
-        let kPopup = NSPopUpButton(frame: .zero, pullsDown: false)
-        kPopup.font = NSFont.systemFont(ofSize: 11)
-        kPopup.addItem(withTitle: "—")
-        for key in KeyCombo.allKeys { kPopup.addItem(withTitle: key) }
-        kPopup.selectItem(withTitle: guideKeyCombo.isEmpty ? "—" : guideKeyCombo.key.uppercased())
-        kPopup.target = self
-        kPopup.action = #selector(comboChanged)
-        kPopup.isHidden = true
-        addSubview(kPopup)
-        self.keyPopup = kPopup
+        // + button to add another key
+        let add = NSButton(title: "+", target: self, action: #selector(addCombo))
+        add.font = NSFont.systemFont(ofSize: 11, weight: .medium)
+        add.bezelStyle = .inline
+        add.isHidden = true
+        addSubview(add)
+        self.addButton = add
+
+        // − button to remove last key
+        let remove = NSButton(title: "−", target: self, action: #selector(removeCombo))
+        remove.font = NSFont.systemFont(ofSize: 11, weight: .medium)
+        remove.bezelStyle = .inline
+        remove.isHidden = true
+        addSubview(remove)
+        self.removeButton = remove
+
+        updateRemoveButtonVisibility()
     }
 
     /// Row with static detail text (no action popup).
@@ -335,50 +412,61 @@ private final class MappingActionRowView: NSView {
 
     required init?(coder: NSCoder) { fatalError() }
 
+    private func appendComboPairView(for combo: KeyCombo) {
+        let pairView = ComboKeyPairView(combo: combo)
+        pairView.isHidden = !comboVisible
+        pairView.onChanged = { [weak self] in self?.comboChanged() }
+        addSubview(pairView)
+        comboPairViews.append(pairView)
+    }
+
+    @objc private func addCombo() {
+        appendComboPairView(for: .empty)
+        updateRemoveButtonVisibility()
+        needsLayout = true
+        // Notify parent so card can resize
+        if let card = superview as? MappingGroupCardView {
+            card.needsLayout = true
+            card.superview?.needsLayout = true
+        }
+    }
+
+    @objc private func removeCombo() {
+        guard comboPairViews.count > 1 else { return }
+        comboPairViews.last?.removeFromSuperview()
+        comboPairViews.removeLast()
+        updateRemoveButtonVisibility()
+        comboChanged()
+        needsLayout = true
+        if let card = superview as? MappingGroupCardView {
+            card.needsLayout = true
+            card.superview?.needsLayout = true
+        }
+    }
+
+    private func updateRemoveButtonVisibility() {
+        removeButton?.isHidden = !comboVisible || comboPairViews.count <= 1
+    }
+
     func setGuideComboVisible(_ visible: Bool) {
         comboVisible = visible
-        modifierPopup?.isHidden = !visible
-        keyPopup?.isHidden = !visible
+        comboPairViews.forEach { $0.isHidden = !visible }
+        addButton?.isHidden = !visible
+        updateRemoveButtonVisibility()
         needsLayout = true
     }
 
-    @objc private func comboChanged() {
-        let modTitle = modifierPopup?.titleOfSelectedItem ?? "None"
-        let keyTitle = keyPopup?.titleOfSelectedItem ?? "—"
-
-        if keyTitle == "—" {
-            onGuideComboChanged?(.empty)
-            return
-        }
-
-        var combo = KeyCombo(key: keyTitle)
-        switch modTitle {
-        case "⌘ Cmd":   combo.command = true
-        case "⌃ Ctrl":  combo.control = true
-        case "⌥ Opt":   combo.option = true
-        case "⇧ Shift": combo.shift = true
-        case "⌘⇧":      combo.command = true; combo.shift = true
-        case "⌃⇧":      combo.control = true; combo.shift = true
-        case "⌘⌥":      combo.command = true; combo.option = true
-        case "⌃⌥":      combo.control = true; combo.option = true
-        default: break
-        }
-        onGuideComboChanged?(combo)
+    private func comboChanged() {
+        let combos = comboPairViews.map { $0.keyCombo }
+        onGuideComboChanged?(combos)
     }
 
-    private static func modifierName(for combo: KeyCombo) -> String {
-        if combo.isEmpty { return "None" }
-        switch (combo.command, combo.control, combo.option, combo.shift) {
-        case (true, false, false, false): return "⌘ Cmd"
-        case (false, true, false, false): return "⌃ Ctrl"
-        case (false, false, true, false): return "⌥ Opt"
-        case (false, false, false, true): return "⇧ Shift"
-        case (true, false, false, true):  return "⌘⇧"
-        case (false, true, false, true):  return "⌃⇧"
-        case (true, false, true, false):  return "⌘⌥"
-        case (false, true, true, false):  return "⌃⌥"
-        default: return "None"
+    /// Total height needed for this row.
+    var preferredHeight: CGFloat {
+        if comboVisible && comboPairViews.count > 1 {
+            return 32 + CGFloat(comboPairViews.count - 1) * 28
         }
+        return 32
     }
 
     private func commonInit(title: String) {
@@ -401,20 +489,23 @@ private final class MappingActionRowView: NSView {
 
         titleLabel.frame = NSRect(x: 14, y: 7, width: 100, height: 18)
         if let popup {
-            if comboVisible, let modPopup = modifierPopup, let kPopup = keyPopup {
-                // Three popups: [Action ▾] [Modifier ▾] [Key ▾]
+            if comboVisible {
+                // Layout: [Action ▾] [Mod ▾ Key ▾] [+] [−]   (stacked vertically for multiple)
+                let actionW: CGFloat = 80
+                let actionX: CGFloat = 104
+                let btnW: CGFloat = 22
                 let gap: CGFloat = 3
                 let rightEdge = bounds.width - 10
-                let actionW: CGFloat = 80
-                let keyW: CGFloat = 46
-                let modW: CGFloat = rightEdge - 104 - actionW - keyW - gap * 2
-                let actionX: CGFloat = 104
-                let actionX2 = actionX
-                let modX: CGFloat = actionX2 + actionW + gap
-                let keyX: CGFloat = modX + modW + gap
-                popup.frame = NSRect(x: actionX2, y: 3, width: actionW, height: 26)
-                modPopup.frame = NSRect(x: modX, y: 3, width: modW, height: 26)
-                kPopup.frame = NSRect(x: keyX, y: 3, width: keyW, height: 26)
+                let comboW = rightEdge - actionX - actionW - gap - btnW * 2 - gap * 2
+
+                popup.frame = NSRect(x: actionX, y: 3, width: actionW, height: 26)
+                addButton?.frame = NSRect(x: rightEdge - btnW * 2 - gap, y: 3, width: btnW, height: 26)
+                removeButton?.frame = NSRect(x: rightEdge - btnW, y: 3, width: btnW, height: 26)
+
+                let comboX = actionX + actionW + gap
+                for (i, pairView) in comboPairViews.enumerated() {
+                    pairView.frame = NSRect(x: comboX, y: 3 + CGFloat(i) * 28, width: comboW, height: 26)
+                }
             } else {
                 popup.frame = NSRect(x: bounds.width - 186, y: 3, width: 172, height: 26)
             }
