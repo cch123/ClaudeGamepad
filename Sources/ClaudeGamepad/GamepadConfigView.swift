@@ -360,8 +360,6 @@ private final class MappingActionRowView: NSView {
 
     // Guide key combo sub-controls (shown when action = Guide Key Combo)
     private var comboPairViews: [ComboKeyPairView] = []
-    private var addButton: NSButton?
-    private var removeButton: NSButton?
     private var comboVisible = false
     private var onGuideComboChanged: (([KeyCombo]) -> Void)?
 
@@ -382,23 +380,6 @@ private final class MappingActionRowView: NSView {
             appendComboPairView(for: combo)
         }
 
-        // + button to add another key
-        let add = NSButton(title: "+", target: self, action: #selector(addCombo))
-        add.font = NSFont.systemFont(ofSize: 11, weight: .medium)
-        add.bezelStyle = .inline
-        add.isHidden = true
-        addSubview(add)
-        self.addButton = add
-
-        // − button to remove last key
-        let remove = NSButton(title: "−", target: self, action: #selector(removeCombo))
-        remove.font = NSFont.systemFont(ofSize: 11, weight: .medium)
-        remove.bezelStyle = .inline
-        remove.isHidden = true
-        addSubview(remove)
-        self.removeButton = remove
-
-        updateRemoveButtonVisibility()
     }
 
     /// Row with static detail text (no action popup).
@@ -420,39 +401,9 @@ private final class MappingActionRowView: NSView {
         comboPairViews.append(pairView)
     }
 
-    @objc private func addCombo() {
-        appendComboPairView(for: .empty)
-        updateRemoveButtonVisibility()
-        needsLayout = true
-        // Notify parent so card can resize
-        if let card = superview as? MappingGroupCardView {
-            card.needsLayout = true
-            card.superview?.needsLayout = true
-        }
-    }
-
-    @objc private func removeCombo() {
-        guard comboPairViews.count > 1 else { return }
-        comboPairViews.last?.removeFromSuperview()
-        comboPairViews.removeLast()
-        updateRemoveButtonVisibility()
-        comboChanged()
-        needsLayout = true
-        if let card = superview as? MappingGroupCardView {
-            card.needsLayout = true
-            card.superview?.needsLayout = true
-        }
-    }
-
-    private func updateRemoveButtonVisibility() {
-        removeButton?.isHidden = !comboVisible || comboPairViews.count <= 1
-    }
-
     func setGuideComboVisible(_ visible: Bool) {
         comboVisible = visible
         comboPairViews.forEach { $0.isHidden = !visible }
-        addButton?.isHidden = !visible
-        updateRemoveButtonVisibility()
         needsLayout = true
     }
 
@@ -490,17 +441,14 @@ private final class MappingActionRowView: NSView {
         titleLabel.frame = NSRect(x: 14, y: 7, width: 100, height: 18)
         if let popup {
             if comboVisible {
-                // Layout: [Action ▾] [Mod ▾ Key ▾] [+] [−]   (stacked vertically for multiple)
+                // Layout: [Action ▾] [Mod ▾ Key ▾]
                 let actionW: CGFloat = 80
                 let actionX: CGFloat = 104
-                let btnW: CGFloat = 22
                 let gap: CGFloat = 3
                 let rightEdge = bounds.width - 10
-                let comboW = rightEdge - actionX - actionW - gap - btnW * 2 - gap * 2
+                let comboW = rightEdge - actionX - actionW - gap
 
                 popup.frame = NSRect(x: actionX, y: 3, width: actionW, height: 26)
-                addButton?.frame = NSRect(x: rightEdge - btnW * 2 - gap, y: 3, width: btnW, height: 26)
-                removeButton?.frame = NSRect(x: rightEdge - btnW, y: 3, width: btnW, height: 26)
 
                 let comboX = actionX + actionW + gap
                 for (i, pairView) in comboPairViews.enumerated() {
