@@ -8,21 +8,24 @@ Supports Xbox, PS5 DualSense, and any MFi-compatible controller. Includes voice 
 
 - **Menu bar app** - runs in the background, no Dock icon
 - **Plug and play** - auto-detects Xbox / PS5 / MFi controllers via `GCController`
+- **Xbox / PS5 style toggle** - switch button labels and colors across the entire UI
 - **Full button mapping** - every button configurable via GUI settings
 - **Voice input** - press stick to speak, transcription pasted to terminal
   - System speech recognition (zero setup)
   - Local whisper.cpp (higher quality, offline)
   - Optional LLM refinement (Ollama / OpenAI compatible)
 - **Quick prompts** - LT/RT + face button sends preset prompts
+- **Command combos** - hold LT+RT to enter command mode with Helldivers or fighting game style input sequences
 - **Preset menu** - Start button opens D-pad-navigable prompt list
-- **Floating HUD** - non-intrusive overlay shows button feedback and transcription
+- **Combo prefix conflict detection** - settings UI warns when one combo shadows another
+- **Floating HUD** - non-intrusive overlay shows button feedback, combos, and transcription
 - **macOS native** - pure Swift + AppKit, no Electron, no Python
 
 ## Default Button Mapping
 
-| Button | Action |
-|--------|--------|
-| A / x | Enter (confirm) |
+| Button (Xbox / PS5) | Action |
+|----------------------|--------|
+| A / ✕ | Enter (confirm) |
 | B / ○ | Ctrl+C (interrupt) |
 | X / □ | Accept (y + Enter) |
 | Y / △ | Reject (n + Enter) |
@@ -30,10 +33,11 @@ Supports Xbox, PS5 DualSense, and any MFi-compatible controller. Includes voice 
 | LB / L1 | Tab (autocomplete) |
 | RB / R1 | Escape |
 | L3 / R3 Press | Voice input |
-| Start / Menu | Preset menu |
-| Select / View | `/clear` |
-| LT + Face | Quick prompt (configurable) |
-| RT + Face | Quick prompt (configurable) |
+| Start / Options | Preset menu |
+| Select / Create | `/clear` |
+| LT / L2 + Face | Quick prompt (configurable) |
+| RT / R2 + Face | Quick prompt (configurable) |
+| LT+RT / L2+R2 | Command mode (combo input) |
 | LT + RT + Select | Quit |
 
 All mappings are fully customizable in Settings.
@@ -105,28 +109,28 @@ cp .build/release/ClaudeGamepad /usr/local/bin/
 
 ## Configuration
 
-Click the menu bar icon > **Settings** to open the settings window. The settings panel uses a dark-themed card layout with three tabs.
+Click the menu bar icon > **Settings** to open the settings window. The settings panel uses a dark-themed card layout with five tabs.
+
+### General
+
+Choose your **controller style** — Xbox or PS5. This changes all button labels and colors across the UI, overlays, and settings panels.
 
 ### Button Mapping
 
-All button bindings organized by region: Shoulders, Face Buttons, Navigation, and System & Sticks. Each button has a dropdown to pick its action. LT/RT serve as modifier keys — their quick prompts are managed in the Preset Prompts tab.
+All button bindings organized by region: Shoulders, Face Buttons, Navigation, and System & Sticks. Each button has a dropdown to pick its action. LT/RT (L2/R2) serve as modifier keys — their quick prompts are managed in the Preset Prompts tab.
 
 ### Preset Prompts
 
 The left panel lists all quick prompt slots (LT+A, LT+B, RT+A, etc.); the right panel is a focused editor. Each slot can use a preset prompt or custom text, with live character count and preview.
 
-Default quick prompts:
+### Command Combos
 
-| Trigger | Prompt |
-|---------|--------|
-| LT + A | showtime |
-| LT + B | fix the failing tests |
-| LT + X | continue |
-| LT + Y | undo the last change |
-| RT + A | run the tests |
-| RT + B | show me the diff |
-| RT + X | looks good, commit this |
-| RT + Y | add types and documentation |
+Hold both triggers (LT+RT / L2+R2) to enter command mode. Input directional sequences to trigger preset prompts — two styles available:
+
+- **Helldivers 2** — D-pad only sequences (e.g. ↑ ↓ → ← ↑ for "Reinforce")
+- **Fighting Game** — D-pad + face button finisher (e.g. ↓ → A for "Hadouken")
+
+A button-based input editor lets you build sequences by clicking, no Unicode typing needed. The settings UI detects and warns about prefix conflicts between combos.
 
 ### Speech Recognition
 
@@ -140,8 +144,8 @@ A top-level Voice Pipeline status bar shows engine, binary install state, model 
 1. Press **L3 / R3** (stick click)
 2. Floating HUD shows "Listening..." with a live waveform
 3. Speak your prompt (auto-detects Chinese and English)
-4. HUD shows transcription with `[A=confirm B=cancel]`
-5. Press **A** to paste to terminal, or **B** to cancel
+4. HUD shows transcription with confirm/cancel options
+5. Press **A / ✕** to paste to terminal, or **B / ○** to cancel
 
 ## Architecture
 
@@ -155,7 +159,7 @@ Sources/ClaudeGamepad/
   WhisperEngine.swift     # Local whisper.cpp CLI integration
   LLMRefiner.swift        # Optional LLM speech post-processing
   OverlayPanel.swift      # Floating HUD panel + waveform visualization
-  ButtonMapping.swift     # Button action config + persistence
+  ButtonMapping.swift     # Button action config, controller style, persistence
   SpeechSettings.swift    # Speech/LLM config + persistence
   GamepadConfigView.swift # Visual button mapping editor
   SettingsWindow.swift    # Dark-themed card-based settings window
