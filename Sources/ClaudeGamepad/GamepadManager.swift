@@ -35,6 +35,9 @@ final class GamepadManager {
         // Receive gamepad input even when app is not focused (essential for menu bar app)
         GCController.shouldMonitorBackgroundEvents = true
 
+        // Clean up any previously-written GameController defaults
+        restoreHomeButtonDefaults()
+
         NotificationCenter.default.addObserver(
             self, selector: #selector(controllerConnected(_:)),
             name: .GCControllerDidConnect, object: nil
@@ -105,12 +108,9 @@ final class GamepadManager {
             if pressed { self?.onSelect() }
         }
 
-        // Guide / Home / PS button — disable system gesture so macOS
-        // doesn't intercept it to open Apple Arcade / Game Center.
-        gamepad.buttonHome?.preferredSystemGestureState = .disabled
-        gamepad.buttonHome?.pressedChangedHandler = { [weak self] _, _, pressed in
-            if pressed { self?.onGuide() }
-        }
+        // Note: Guide / Home / PS button is intercepted by macOS at the
+        // system level and cannot be detected by any app. Use the
+        // "Guide Key Combo" button action on a different button instead.
 
         // Stick clicks
         gamepad.leftThumbstickButton?.pressedChangedHandler = { [weak self] _, _, pressed in
@@ -241,6 +241,8 @@ final class GamepadManager {
         case .arrowDown:  keys.pressArrow(.down)
         case .arrowLeft:  keys.pressArrow(.left)
         case .arrowRight: keys.pressArrow(.right)
+        case .guideCombo:
+            onGuide()
         case .quit:
             overlay.showMessage("👋 Bye!")
             DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
@@ -581,4 +583,24 @@ final class GamepadManager {
         // Apply Whisper settings
         whisperSpeech.modelName = speechSettings.whisperModel
     }
+
+    // MARK: - Guide Button Defaults Cleanup
+
+    /// Remove any previously-written defaults that may interfere with
+    /// the GameController framework.
+    private func restoreHomeButtonDefaults() {
+        for key in ["bluetoothPrefsMenuLongPressAction",
+                     "bluetoothPrefsShareLongPressSystemGestureMode",
+                     "longPressShareGesture_mac",
+                     "doublePressShareGesture_mac"] {
+            let process = Process()
+            process.executableURL = URL(fileURLWithPath: "/usr/bin/defaults")
+            process.arguments = ["delete", "com.apple.GameController", key]
+            process.standardOutput = FileHandle.nullDevice
+            process.standardError = FileHandle.nullDevice
+            try? process.run()
+            process.waitUntilExit()
+        }
+    }
+
 }
